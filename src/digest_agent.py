@@ -312,35 +312,51 @@ def collect_all_articles():
     return all_articles
 
 
-SYSTEM_PROMPT = """You are an expert analyst for the 3R Model (Return, Recruit, Retain) -- a human capital management framework for Ukraine.
-Analyse the provided news articles and produce a structured weekly digest.
+SYSTEM_PROMPT = """You are an expert analyst for the 3R Model -- a human capital management framework for Ukraine based on brain circulation.
 
-3R Model:
-- RETURN: restoring connection with Ukrainian human capital abroad (diaspora, dual engagement, knowledge circulation)
-- RECRUIT: attracting professionals with competencies unavailable domestically (structural gaps, targeted attraction)
-- RETAIN: conditions for skills application, reskilling, reducing brain waste, building R&D environment
+THE 3R MODEL:
+The model's core unit is the CIRCULATION TRANSACTION: an interaction where a human capital carrier and an economic actor jointly produce a shared outcome (knowledge applied, decision implemented, collaboration formed). A contact or registration is NOT a transaction.
 
-Rules:
-- Include ONLY articles relevant to human capital, labor markets, education, migration, demographics, reskilling, or reconstruction
-- If fewer than 3 articles are relevant, still produce the digest with what you have and note the limitation
-- Group under Return / Recruit / Retain + Global Context sections
-- For each item: 1-2 sentence summary + why it matters for 3R + source link
-- Be analytical, not descriptive
+RETURN -- Restoring Connection:
+Rebuilding trust and reactivating human capital temporarily outside Ukraine.
+Covers: return of citizens, diaspora experience integration, knowledge circulation, restoration of professional networks.
+Goal: not demographic return per se, but ECONOMIC INCLUSION -- human capital generating value regardless of physical location.
+Key signals: dual engagement, diaspora-to-Ukraine knowledge transfer, professional network reactivation.
+
+RECRUIT -- Structural Reinforcement:
+Addressing structural competency gaps by attracting professionals unavailable domestically.
+NOT about headcount -- about targeted adjustment of human capital configuration.
+Covers: identifying competency deficits in strategic sectors, attracting carriers of those competencies, institutional integration.
+Key signals: sector-specific skill shortages, targeted attraction programs, education-demand alignment.
+
+RETAIN -- Environment for Application and Accumulation:
+The CENTRAL element. Creating conditions where human capital is applied, accumulates, and compounds.
+Key problem: BRAIN WASTE -- competencies not fully utilised (measured by over-qualification rate).
+Key lever: RESKILLING -- only effective when DEMAND-COUPLED (tied to specific employer need). Reskilling without demand reproduces brain waste at higher level.
+Reskilling connects to Return: diaspora as mentors and knowledge transfer agents.
+Key signals: reskilling programs with employer demand, R&D environment, over-qualification data, veteran reintegration.
+
+GLOBAL CONTEXT: international trends in migration policy, labor markets, brain drain/circulation in comparable countries.
+
+ANALYTICAL RULES:
+- Classify by what TRANSACTION TYPE the article signals, not just its topic
+- Prioritise articles that indicate actual transactions or conditions enabling them
+- Be analytical, not descriptive -- explain WHY it matters for brain circulation
 - Return ONLY valid JSON, no markdown fences, no extra text"""
 
 DIGEST_SCHEMA = """{
   "week": "Week 26, 2026",
   "date_range": "June 22-28, 2026",
-  "executive_summary_ua": "3-4 sentences in Ukrainian about this week's key findings",
-  "executive_summary_en": "3-4 sentences in English about this week's key findings",
+  "executive_summary_ua": "3-4 sentences in Ukrainian: what circulation signals dominated this week and why they matter",
+  "executive_summary_en": "3-4 sentences in English: what circulation signals dominated this week and why they matter",
   "sections": {
-    "return": [{"title_ua":"","title_en":"","summary_ua":"","summary_en":"","relevance_ua":"","relevance_en":"","url":"","source":""}],
+    "return": [{"title_ua":"","title_en":"","summary_ua":"","summary_en":"","relevance_ua":"what circulation transaction type this signals","relevance_en":"what circulation transaction type this signals","url":"","source":""}],
     "recruit": [],
     "retain": [],
     "global_context": []
   },
-  "key_insight_ua": "The single most important takeaway this week in Ukrainian",
-  "key_insight_en": "The single most important takeaway this week in English"
+  "key_insight_ua": "The single most important brain circulation signal this week -- Ukrainian",
+  "key_insight_en": "The single most important brain circulation signal this week -- English"
 }"""
 
 def clean_for_json(text):
@@ -359,16 +375,71 @@ def clean_for_json(text):
     return "".join(result)[:500]  # limit length
 
 
+def select_top_articles(client, articles, top_n=25):
+    """Step 1: Ask Claude to select the top N most relevant articles for 3R analysis."""
+    clean = []
+    for a in articles:
+        clean.append({
+            "title":   clean_for_json(a.get("title", "")),
+            "url":     a.get("url", ""),
+            "snippet": clean_for_json(a.get("snippet", "")),
+            "source":  clean_for_json(a.get("source", "")),
+        })
+
+    articles_text = "\n".join([
+        f"[{i+1}] {a['title']} | {a['source']} | {a['snippet'][:120]}"
+        for i, a in enumerate(clean)
+    ])
+
+    prompt = f"""You are a 3R Model analyst. Below are {len(clean)} articles collected this week.
+
+3R Model focuses on brain circulation: Return (diaspora/knowledge reactivation), Recruit (structural competency gaps), Retain (reskilling, brain waste reduction, R&D environment).
+
+Select the {top_n} most relevant articles for 3R analysis. An article is relevant if it signals:
+- A circulation transaction or condition enabling one
+- A policy, program, or data point about Ukrainian human capital
+- A global trend directly comparable to Ukraine's situation
+
+Return ONLY a JSON array of the selected article numbers, nothing else.
+Example: [1, 3, 7, 12, 15]
+
+ARTICLES:
+{articles_text}
+
+Return ONLY the JSON array of {top_n} numbers:"""
+
+    resp = client.messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=200,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    raw = resp.content[0].text.strip()
+    # Parse array
+    import re
+    nums = re.findall(r'\d+', raw)
+    selected = [int(n) - 1 for n in nums if 0 < int(n) <= len(clean)][:top_n]
+    if not selected:
+        log.warning("Pre-filter returned no articles — using first 25")
+        selected = list(range(min(top_n, len(clean))))
+    log.info(f"Pre-filter: {len(clean)} → {len(selected)} articles selected")
+    return [articles[i] for i in selected]
+
+
 def analyse_with_claude(articles):
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-    # Clean article content before sending
+
+    # Step 1: pre-filter to top 25 most relevant
+    if len(articles) > 30:
+        articles = select_top_articles(client, articles, top_n=25)
+
+    # Step 2: deep analysis of selected articles
     clean_articles = []
     for a in articles:
         clean_articles.append({
-            "title": clean_for_json(a.get("title", "")),
-            "url": a.get("url", ""),
+            "title":   clean_for_json(a.get("title", "")),
+            "url":     a.get("url", ""),
             "snippet": clean_for_json(a.get("snippet", "")),
-            "source": clean_for_json(a.get("source", "")),
+            "source":  clean_for_json(a.get("source", "")),
         })
     articles_text = "\n\n".join([
         f"[{i+1}] TITLE: {a['title']}\nURL: {a['url']}\nSNIPPET: {a['snippet']}"
@@ -379,9 +450,10 @@ def analyse_with_claude(articles):
         max_tokens=4000,
         system=SYSTEM_PROMPT,
         messages=[{"role": "user", "content":
-            f"Here are {len(clean_articles)} articles collected this week.\n\n{articles_text}\n\n"
-            f"Analyse through 3R lens. IMPORTANT: Return ONLY valid JSON. "
-            f"Do not use double quotes inside string values - use single quotes or rephrase instead.\n{DIGEST_SCHEMA}"}],
+            f"Here are {len(clean_articles)} pre-selected articles for this week's 3R digest.\n\n{articles_text}\n\n"
+            f"Produce the digest. Select 10-15 best articles total across all sections. "
+            f"IMPORTANT: Return ONLY valid JSON. "
+            f"Do not use double quotes inside string values.\n{DIGEST_SCHEMA}"}],
     )
     raw = response.content[0].text.strip()
     # Strip markdown fences
