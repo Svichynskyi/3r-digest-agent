@@ -1,0 +1,57 @@
+name: 3R Human Capital Digest
+
+on:
+  schedule:
+    # Every Monday at 06:00 UTC = 09:00 Kyiv time (UTC+3)
+    - cron: "0 6 * * 1"
+  workflow_dispatch:   # allow manual trigger from GitHub UI
+
+jobs:
+  run-digest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Restore sent history (persists between runs)
+        uses: actions/cache@v4
+        with:
+          path: sent_history/
+          key: sent-history-${{ github.run_id }}
+          restore-keys: |
+            sent-history-
+
+      - name: Run digest agent
+        env:
+          ANTHROPIC_API_KEY:            ${{ secrets.ANTHROPIC_API_KEY }}
+          GMAIL_USER:                   ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD:           ${{ secrets.GMAIL_APP_PASSWORD }}
+          GOOGLE_SERVICE_ACCOUNT_JSON:  ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+          DRIVE_FOLDER_NAME:            "3R Human Capital Digest"
+        run: |
+          mkdir -p logs sent_history
+          python src/digest_agent.py
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: digest-logs-${{ github.run_number }}
+          path: logs/
+          retention-days: 30
