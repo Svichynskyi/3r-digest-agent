@@ -138,8 +138,13 @@ def search_articles(query, max_results=10):
             "https://api.tavily.com/search",
             json=payload, headers=headers, timeout=20
         )
-        resp.raise_for_status()
-        for item in resp.json().get("results", []):
+        if resp.status_code != 200:
+            log.warning(f"Tavily HTTP {resp.status_code} for '{query}': {resp.text[:200]}")
+            return articles
+        data = resp.json()
+        results = data.get("results", [])
+        log.info(f"Tavily '{query[:40]}': {len(results)} results")
+        for item in results:
             title   = item.get("title", "")
             url     = item.get("url", "")
             snippet = item.get("content", "")[:400]
