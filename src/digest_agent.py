@@ -44,26 +44,26 @@ OUTPUT_PDF_UA = f"3R_Digest_{WEEK_TAG}_UA.pdf"
 OUTPUT_PDF_EN = f"3R_Digest_{WEEK_TAG}_EN.pdf"
 
 SEARCH_QUERIES = [
-    "ÑÐºÑÐ°ÑÐ½ÑÑÐºÐ° Ð´ÑÐ°ÑÐ¿Ð¾ÑÐ° Ð¿Ð¾Ð²ÐµÑÐ½ÐµÐ½Ð½Ñ 2025",
+    "ÃÂÃÂºÃÂÃÂ°ÃÂÃÂ½ÃÂÃÂÃÂºÃÂ° ÃÂ´ÃÂÃÂ°ÃÂÃÂ¿ÃÂ¾ÃÂÃÂ° ÃÂ¿ÃÂ¾ÃÂ²ÃÂµÃÂÃÂ½ÃÂµÃÂ½ÃÂ½ÃÂ 2025",
     "brain circulation Ukraine diaspora 2025",
     "Ukrainian professionals return home 2025",
-    "Ð·Ð°Ð»ÑÑÐµÐ½Ð½Ñ ÑÐ¿ÐµÑÑÐ°Ð»ÑÑÑÑÐ² Ð£ÐºÑÐ°ÑÐ½Ð° 2025",
+    "ÃÂ·ÃÂ°ÃÂ»ÃÂÃÂÃÂµÃÂ½ÃÂ½ÃÂ ÃÂÃÂ¿ÃÂµÃÂÃÂÃÂ°ÃÂ»ÃÂÃÂÃÂÃÂÃÂ² ÃÂ£ÃÂºÃÂÃÂ°ÃÂÃÂ½ÃÂ° 2025",
     "talent attraction Ukraine reconstruction",
     "structural skills gap Ukraine labor market",
-    "Ð¿ÐµÑÐµÐºÐ²Ð°Ð»ÑÑÑÐºÐ°ÑÑÑ reskilling Ð£ÐºÑÐ°ÑÐ½Ð° 2025",
+    "ÃÂ¿ÃÂµÃÂÃÂµÃÂºÃÂ²ÃÂ°ÃÂ»ÃÂÃÂÃÂÃÂºÃÂ°ÃÂÃÂÃÂ reskilling ÃÂ£ÃÂºÃÂÃÂ°ÃÂÃÂ½ÃÂ° 2025",
     "over-qualification brain waste Ukraine",
     "reskilling demand-driven workforce 2025",
     "human capital global trends 2025",
     "brain drain developing countries solutions",
     "workforce development reconstruction post-war",
-    "ÑÐ¸Ð½Ð¾Ðº Ð¿ÑÐ°ÑÑ Ð£ÐºÑÐ°ÑÐ½Ð° 2025",
-    "Ð»ÑÐ´ÑÑÐºÐ¸Ð¹ ÐºÐ°Ð¿ÑÑÐ°Ð» Ð£ÐºÑÐ°ÑÐ½Ð° Ð´ÐµÐ¼Ð¾Ð³ÑÐ°ÑÑÑ",
+    "ÃÂÃÂ¸ÃÂ½ÃÂ¾ÃÂº ÃÂ¿ÃÂÃÂ°ÃÂÃÂ ÃÂ£ÃÂºÃÂÃÂ°ÃÂÃÂ½ÃÂ° 2025",
+    "ÃÂ»ÃÂÃÂ´ÃÂÃÂÃÂºÃÂ¸ÃÂ¹ ÃÂºÃÂ°ÃÂ¿ÃÂÃÂÃÂ°ÃÂ» ÃÂ£ÃÂºÃÂÃÂ°ÃÂÃÂ½ÃÂ° ÃÂ´ÃÂµÃÂ¼ÃÂ¾ÃÂ³ÃÂÃÂ°ÃÂÃÂÃÂ",
 ]
 
 SEARX_INSTANCE = "https://searx.be"
 
 
-# ââ Deduplication âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+# Ã¢ÂÂÃ¢ÂÂ Deduplication Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
 
 def load_sent_history():
     if SENT_HISTORY_FILE.exists():
@@ -88,21 +88,42 @@ def mark_articles_sent(articles, history):
     return history
 
 
-# ââ News collection âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+# Ã¢ÂÂÃ¢ÂÂ News collection Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
 
 def search_articles(query, max_results=5):
     articles = []
     try:
-        params = {"q": query, "format": "json", "time_range": "week", "categories": "news,general"}
-        headers = {"User-Agent": "Mozilla/5.0 (compatible; 3RDigestBot/1.0)"}
-        resp = requests.get(f"{SEARX_INSTANCE}/search", params=params, headers=headers, timeout=15)
-        resp.raise_for_status()
-        for r in resp.json().get("results", [])[:max_results]:
-            articles.append({"title": r.get("title",""), "url": r.get("url",""),
-                             "snippet": r.get("content",""), "source": r.get("engine","web")})
+        if NEWSAPI_KEY:
+            params = {
+                "q": query, "apiKey": NEWSAPI_KEY,
+                "language": "en", "sortBy": "publishedAt",
+                "pageSize": max_results, "from": (datetime.date.today() - datetime.timedelta(days=7)).isoformat()
+            }
+            resp = requests.get("https://newsapi.org/v2/everything", params=params, timeout=15)
+            resp.raise_for_status()
+            for r in resp.json().get("articles", [])[:max_results]:
+                articles.append({
+                    "title": r.get("title",""), "url": r.get("url",""),
+                    "snippet": r.get("description","") or r.get("content","")[:200],
+                    "source": r.get("source",{}).get("name","web")
+                })
+        else:
+            headers = {"User-Agent": "Mozilla/5.0 (compatible; 3RDigestBot/1.0; +https://github.com/Svichynskyi/3r-digest-agent)"}
+            params = {"q": query, "format": "json", "time_range": "week", "categories": "news,general"}
+            for instance in ["https://searx.tiekoetter.com", "https://search.bus-hit.me", "https://searx.ninja"]:
+                try:
+                    resp = requests.get(f"{instance}/search", params=params, headers=headers, timeout=10)
+                    if resp.status_code == 200:
+                        for r in resp.json().get("results", [])[:max_results]:
+                            articles.append({"title": r.get("title",""), "url": r.get("url",""),
+                                             "snippet": r.get("content",""), "source": r.get("engine","web")})
+                        if articles:
+                            break
+                except Exception:
+                    continue
     except Exception as e:
         log.warning(f"Search failed for '{query}': {e}")
-    time.sleep(1)
+    time.sleep(0.5)
     return articles
 
 def collect_all_articles():
@@ -117,9 +138,9 @@ def collect_all_articles():
     return all_articles
 
 
-# ââ Claude analysis âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+# Ã¢ÂÂÃ¢ÂÂ Claude analysis Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
 
-SYSTEM_PROMPT = """You are an expert analyst for the 3R Model (Return, Recruit, Retain) â
+SYSTEM_PROMPT = """You are an expert analyst for the 3R Model (Return, Recruit, Retain) Ã¢ÂÂ
 a human capital management framework for Ukraine.
 Analyse the provided news articles and produce a structured weekly digest.
 
@@ -166,7 +187,7 @@ def analyse_with_claude(articles):
     return json.loads(raw)
 
 
-# ââ PDF generation ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+# Ã¢ÂÂÃ¢ÂÂ PDF generation Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
 
 ACCENT = colors.HexColor("#1B4F72")
 LIGHT  = colors.HexColor("#EBF5FB")
@@ -178,10 +199,10 @@ SECTION_COLORS = {
     "global_context": colors.HexColor("#4A235A"),
 }
 SECTION_LABELS = {
-    "return":         ("RETURN â ÐÑÐ´Ð½Ð¾Ð²Ð»ÐµÐ½Ð½Ñ Ð·Ð²'ÑÐ·ÐºÑ",    "RETURN â Restoring Connection"),
-    "recruit":        ("RECRUIT â Ð¡ÑÑÑÐºÑÑÑÐ½Ðµ Ð¿ÑÐ´ÑÐ¸Ð»ÐµÐ½Ð½Ñ", "RECRUIT â Structural Reinforcement"),
-    "retain":         ("RETAIN â Ð¡ÐµÑÐµÐ´Ð¾Ð²Ð¸ÑÐµ Ð½Ð°ÐºÐ¾Ð¿Ð¸ÑÐµÐ½Ð½Ñ", "RETAIN â Environment for Accumulation"),
-    "global_context": ("ÐÐÐÐÐÐÐ¬ÐÐÐ ÐÐÐÐ¢ÐÐÐ¡Ð¢",             "GLOBAL CONTEXT"),
+    "return":         ("RETURN Ã¢ÂÂ ÃÂÃÂÃÂ´ÃÂ½ÃÂ¾ÃÂ²ÃÂ»ÃÂµÃÂ½ÃÂ½ÃÂ ÃÂ·ÃÂ²'ÃÂÃÂ·ÃÂºÃÂ",    "RETURN Ã¢ÂÂ Restoring Connection"),
+    "recruit":        ("RECRUIT Ã¢ÂÂ ÃÂ¡ÃÂÃÂÃÂÃÂºÃÂÃÂÃÂÃÂ½ÃÂµ ÃÂ¿ÃÂÃÂ´ÃÂÃÂ¸ÃÂ»ÃÂµÃÂ½ÃÂ½ÃÂ", "RECRUIT Ã¢ÂÂ Structural Reinforcement"),
+    "retain":         ("RETAIN Ã¢ÂÂ ÃÂ¡ÃÂµÃÂÃÂµÃÂ´ÃÂ¾ÃÂ²ÃÂ¸ÃÂÃÂµ ÃÂ½ÃÂ°ÃÂºÃÂ¾ÃÂ¿ÃÂ¸ÃÂÃÂµÃÂ½ÃÂ½ÃÂ", "RETAIN Ã¢ÂÂ Environment for Accumulation"),
+    "global_context": ("ÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¬ÃÂÃÂÃÂ ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¡ÃÂ¢",             "GLOBAL CONTEXT"),
 }
 
 def build_pdf(digest, filename, lang="ua"):
@@ -209,9 +230,9 @@ def build_pdf(digest, filename, lang="ua"):
     footer_s  = ps("ft", fontSize=8, textColor=MUTED, fontName="Helvetica", alignment=1)
 
     story = []
-    label = "Ð©Ð¾ÑÐ¸Ð¶Ð½ÐµÐ²Ð¸Ð¹ Ð´Ð°Ð¹Ð´Ð¶ÐµÑÑ" if lang == "ua" else "Weekly Digest"
-    story.append(Paragraph("3R Model â Human Capital", title_s))
-    story.append(Paragraph(f"{label} Â· {TODAY_STR} Â· {digest.get('date_range','')}", sub_s))
+    label = "ÃÂ©ÃÂ¾ÃÂÃÂ¸ÃÂ¶ÃÂ½ÃÂµÃÂ²ÃÂ¸ÃÂ¹ ÃÂ´ÃÂ°ÃÂ¹ÃÂ´ÃÂ¶ÃÂµÃÂÃÂ" if lang == "ua" else "Weekly Digest"
+    story.append(Paragraph("3R Model Ã¢ÂÂ Human Capital", title_s))
+    story.append(Paragraph(f"{label} ÃÂ· {TODAY_STR} ÃÂ· {digest.get('date_range','')}", sub_s))
     story.append(HRFlowable(width="100%", thickness=1.5, color=ACCENT, spaceAfter=5*mm))
 
     exec_text = digest.get(f"executive_summary_{lang}", "")
@@ -220,7 +241,7 @@ def build_pdf(digest, filename, lang="ua"):
 
     insight = digest.get(f"key_insight_{lang}", "")
     if insight:
-        prefix = "ÐÐ¾Ð»Ð¾Ð²Ð½Ð¸Ð¹ Ð²Ð¸ÑÐ½Ð¾Ð²Ð¾Ðº ÑÐ¸Ð¶Ð½Ñ:" if lang == "ua" else "Key insight this week:"
+        prefix = "ÃÂÃÂ¾ÃÂ»ÃÂ¾ÃÂ²ÃÂ½ÃÂ¸ÃÂ¹ ÃÂ²ÃÂ¸ÃÂÃÂ½ÃÂ¾ÃÂ²ÃÂ¾ÃÂº ÃÂÃÂ¸ÃÂ¶ÃÂ½ÃÂ:" if lang == "ua" else "Key insight this week:"
         story.append(Paragraph(f"<b>{prefix}</b> {insight}", insight_s))
 
     story.append(Spacer(1, 4*mm))
@@ -250,22 +271,22 @@ def build_pdf(digest, filename, lang="ua"):
             story.append(Paragraph(f"\u25b8 {t}", ititle_s))
             story.append(Paragraph(s, ibody_s))
             if r:
-                pref = "ÐÐ½Ð°ÑÐµÐ½Ð½Ñ Ð´Ð»Ñ 3R:" if lang == "ua" else "Relevance for 3R:"
+                pref = "ÃÂÃÂ½ÃÂ°ÃÂÃÂµÃÂ½ÃÂ½ÃÂ ÃÂ´ÃÂ»ÃÂ 3R:" if lang == "ua" else "Relevance for 3R:"
                 story.append(Paragraph(f"<i>{pref}</i> {r}", irel_s))
             if u:
                 story.append(Paragraph(f'<a href="{u}" color="#2471A3">{src or u[:60]}</a>', link_s))
             story.append(HRFlowable(width="100%", thickness=0.3, color=colors.lightgrey, spaceAfter=3*mm))
 
     story.append(Spacer(1, 6*mm))
-    ft = (f"ÐÐ°Ð¹Ð´Ð¶ÐµÑÑ ÑÑÐ¾ÑÐ¼Ð¾Ð²Ð°Ð½Ð¾ Ð°Ð²ÑÐ¾Ð¼Ð°ÑÐ¸ÑÐ½Ð¾ Â· {TODAY_STR} Â· 3R Model: Return Â· Recruit Â· Retain"
+    ft = (f"ÃÂÃÂ°ÃÂ¹ÃÂ´ÃÂ¶ÃÂµÃÂÃÂ ÃÂÃÂÃÂ¾ÃÂÃÂ¼ÃÂ¾ÃÂ²ÃÂ°ÃÂ½ÃÂ¾ ÃÂ°ÃÂ²ÃÂÃÂ¾ÃÂ¼ÃÂ°ÃÂÃÂ¸ÃÂÃÂ½ÃÂ¾ ÃÂ· {TODAY_STR} ÃÂ· 3R Model: Return ÃÂ· Recruit ÃÂ· Retain"
           if lang == "ua" else
-          f"Digest generated automatically Â· {TODAY_STR} Â· 3R Model: Return Â· Recruit Â· Retain")
+          f"Digest generated automatically ÃÂ· {TODAY_STR} ÃÂ· 3R Model: Return ÃÂ· Recruit ÃÂ· Retain")
     story.append(Paragraph(ft, footer_s))
     doc.build(story)
     log.info(f"PDF generated: {filename}")
 
 
-# ââ Google Drive ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+# Ã¢ÂÂÃ¢ÂÂ Google Drive Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
 
 def get_drive_service():
     creds = Credentials.from_service_account_info(
@@ -291,7 +312,7 @@ def upload_to_drive(service, filepath, folder_id):
     return f.get("webViewLink", "")
 
 
-# ââ Email list ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+# Ã¢ÂÂÃ¢ÂÂ Email list Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
 
 def get_email_list():
     creds = Credentials.from_service_account_info(
@@ -305,7 +326,7 @@ def get_email_list():
     return emails
 
 
-# ââ Email sending âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+# Ã¢ÂÂÃ¢ÂÂ Email sending Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
 
 def build_email_body(digest, link_ua, link_en):
     exec_ua    = digest.get("executive_summary_ua", "")
@@ -313,13 +334,13 @@ def build_email_body(digest, link_ua, link_en):
     exec_en    = digest.get("executive_summary_en", "")
     return f"""<html><body style="font-family:Arial,sans-serif;max-width:640px;margin:auto;color:#222">
 <div style="background:#1B4F72;padding:20px 24px;border-radius:8px 8px 0 0">
-  <h2 style="color:white;margin:0">3R Model â Human Capital Digest</h2>
-  <p style="color:#AED6F1;margin:4px 0 0">{TODAY_STR} Â· Ð©Ð¾ÑÐ¸Ð¶Ð½ÐµÐ²Ð¸Ð¹ Ð´Ð°Ð¹Ð´Ð¶ÐµÑÑ</p>
+  <h2 style="color:white;margin:0">3R Model Ã¢ÂÂ Human Capital Digest</h2>
+  <p style="color:#AED6F1;margin:4px 0 0">{TODAY_STR} ÃÂ· ÃÂ©ÃÂ¾ÃÂÃÂ¸ÃÂ¶ÃÂ½ÃÂµÃÂ²ÃÂ¸ÃÂ¹ ÃÂ´ÃÂ°ÃÂ¹ÃÂ´ÃÂ¶ÃÂµÃÂÃÂ</p>
 </div>
 <div style="padding:20px 24px;background:#f9f9f9;border:1px solid #ddd;border-top:none">
   <p style="font-size:15px;line-height:1.6">{exec_ua}</p>
   <div style="background:#EBF5FB;border-left:4px solid #1B4F72;padding:12px 16px;margin:16px 0;border-radius:0 6px 6px 0">
-    <strong>ÐÐ¾Ð»Ð¾Ð²Ð½Ð¸Ð¹ Ð²Ð¸ÑÐ½Ð¾Ð²Ð¾Ðº:</strong> {insight_ua}
+    <strong>ÃÂÃÂ¾ÃÂ»ÃÂ¾ÃÂ²ÃÂ½ÃÂ¸ÃÂ¹ ÃÂ²ÃÂ¸ÃÂÃÂ½ÃÂ¾ÃÂ²ÃÂ¾ÃÂº:</strong> {insight_ua}
   </div>
   <p style="font-size:13px;color:#555;line-height:1.5">{exec_en}</p>
   <div style="margin-top:20px">
@@ -328,7 +349,7 @@ def build_email_body(digest, link_ua, link_en):
   </div>
 </div>
 <div style="padding:12px 24px;background:#eee;border-radius:0 0 8px 8px;font-size:11px;color:#888;text-align:center">
-  3R Digest Agent Â· Return Â· Recruit Â· Retain
+  3R Digest Agent ÃÂ· Return ÃÂ· Recruit ÃÂ· Retain
 </div></body></html>"""
 
 def send_emails(emails, digest, pdf_ua, pdf_en, link_ua, link_en):
@@ -339,7 +360,7 @@ def send_emails(emails, digest, pdf_ua, pdf_en, link_ua, link_en):
             msg = MIMEMultipart("mixed")
             msg["From"]    = GMAIL_USER
             msg["To"]      = email
-            msg["Subject"] = f"3R Human Capital Digest â {TODAY_STR}"
+            msg["Subject"] = f"3R Human Capital Digest Ã¢ÂÂ {TODAY_STR}"
             msg.attach(MIMEText(body, "html"))
             for pdf_path in [pdf_ua, pdf_en]:
                 with open(pdf_path, "rb") as f:
@@ -353,10 +374,10 @@ def send_emails(emails, digest, pdf_ua, pdf_en, link_ua, link_en):
             time.sleep(0.5)
 
 
-# ââ Main ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+# Ã¢ÂÂÃ¢ÂÂ Main Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
 
 def main():
-    log.info(f"=== 3R Digest Agent starting â {WEEK_TAG} ===")
+    log.info(f"=== 3R Digest Agent starting Ã¢ÂÂ {WEEK_TAG} ===")
     articles = collect_all_articles()
     if not articles:
         log.error("No articles found. Aborting.")
@@ -365,7 +386,7 @@ def main():
     new_articles = filter_new_articles(articles, history)
     log.info(f"New articles: {len(new_articles)} / {len(articles)}")
     if len(new_articles) < 5:
-        log.warning("Fewer than 5 new articles â using all collected.")
+        log.warning("Fewer than 5 new articles Ã¢ÂÂ using all collected.")
         new_articles = articles
     digest    = analyse_with_claude(new_articles)
     build_pdf(digest, OUTPUT_PDF_UA, lang="ua")
