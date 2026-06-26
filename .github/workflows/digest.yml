@@ -9,6 +9,8 @@ on:
 jobs:
   run-digest:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     timeout-minutes: 30
 
     steps:
@@ -45,6 +47,7 @@ jobs:
           GOOGLE_SERVICE_ACCOUNT_JSON:  ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
           DRIVE_FOLDER_NAME:            "3R Human Capital Digest"
           NEWSAPI_KEY:                  ${{ secrets.NEWSAPI_KEY }}
+          GITHUB_TOKEN:                 ${{ secrets.GITHUB_TOKEN }}
         run: |
           mkdir -p logs sent_history
           python src/digest_agent.py
