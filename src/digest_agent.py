@@ -322,63 +322,61 @@ SECTION_LABELS_EMAIL = {
     "global_context": "GLOBAL CONTEXT",
 }
 
+
+def build_section_html(sec_key, items):
+    color = SECTION_COLORS_HEX[sec_key]
+    label = SECTION_LABELS_EMAIL[sec_key]
+    html = []
+    html.append('<div style="background:' + color + ';padding:8px 16px;margin:20px 0 8px;border-radius:4px;">')
+    html.append('<span style="color:white;font-size:13px;font-weight:bold;">' + label + '</span></div>')
+    for item in items:
+        t   = item.get("title_en")    or item.get("title_ua", "")
+        s   = item.get("summary_en")  or item.get("summary_ua", "")
+        rel = item.get("relevance_en")or item.get("relevance_ua", "")
+        u   = item.get("url", "")
+        src = item.get("source", "")
+        html.append('<div style="border-left:3px solid ' + color + ';padding:8px 12px;margin-bottom:12px;">')
+        html.append('<p style="margin:0 0 4px;font-size:14px;font-weight:bold;color:#1B4F72;">' + t + '</p>')
+        html.append('<p style="margin:0 0 4px;font-size:13px;line-height:1.5;color:#333;">' + s + '</p>')
+        if rel:
+            html.append('<p style="margin:0 0 4px;font-size:12px;color:#666;font-style:italic;">3R: ' + rel + '</p>')
+        if u:
+            display = src if src else u[:50]
+            html.append('<a href="' + u + '" style="font-size:11px;color:#2471A3;">' + display + '</a>')
+        html.append('</div>')
+    return "\n".join(html)
+
+
 def build_email_body(digest, link_pdf):
     insight = digest.get("key_insight_en", "")
-    exec_en = digest.get("executive_summary_en", "")
-
     sections_html = ""
     for sec_key in ["return", "recruit", "retain", "global_context"]:
         items = digest.get("sections", {}).get(sec_key, [])
-        if not items:
-            continue
-        color = SECTION_COLORS_HEX[sec_key]
-        label = SECTION_LABELS_EMAIL[sec_key]
-        sections_html += (
-            f'<div style="background:{color};padding:8px 16px;margin:20px 0 8px;border-radius:4px;">' +
-            f'<span style="color:white;font-size:13px;font-weight:bold;">{label}</span></div>\n'
-        )
-        for item in items:
-            t   = item.get("title_en")    or item.get("title_ua", "")
-            s   = item.get("summary_en")  or item.get("summary_ua", "")
-            rel = item.get("relevance_en")or item.get("relevance_ua", "")
-            u   = item.get("url", "")
-            src = item.get("source", "")
-            sections_html += (
-                f'<div style="border-left:3px solid {color};padding:8px 12px;margin-bottom:12px;">' +
-                f'<p style="margin:0 0 4px;font-size:14px;font-weight:bold;color:#1B4F72;">{t}</p>' +
-                f'<p style="margin:0 0 4px;font-size:13px;line-height:1.5;color:#333;">{s}</p>'
-            )
-            if rel:
-                sections_html += f'<p style="margin:0 0 4px;font-size:12px;color:#666;font-style:italic;">3R: {rel}</p>'
-            if u:
-                sections_html += f'<a href="{u}" style="font-size:11px;color:#2471A3;">{src or u[:50]}</a>'
-            sections_html += "</div>\n"
+        if items:
+            sections_html += build_section_html(sec_key, items)
+    parts = [
+        "<html><head><meta charset=\"utf-8\"></head>",
+        "<body style=\"font-family:Arial,sans-serif;max-width:660px;margin:auto;color:#222;\">",
+        "<div style=\"background:#1B4F72;padding:20px 24px;border-radius:8px 8px 0 0;\">",
+        "  <h2 style=\"color:white;margin:0;font-size:20px;\">3R Model -- Human Capital Digest</h2>",
+        "  <p style=\"color:#AED6F1;margin:6px 0 0;font-size:13px;\">" + TODAY_STR + " &#183; Weekly Digest</p>",
+        "</div>",
+        "<div style=\"padding:20px 24px;background:#ffffff;border:1px solid #ddd;border-top:none;\">",
+        "<div style=\"background:#EBF5FB;border-left:4px solid #1B4F72;padding:12px 16px;margin-bottom:16px;border-radius:0 4px 4px 0;\">",
+        "<p style=\"margin:0;font-size:13px;line-height:1.6;color:#1B4F72;\"><strong>Key insight:</strong> " + insight + "</p>",
+        "</div>",
+        sections_html,
+        "<div style=\"margin-top:20px;padding-top:16px;border-top:1px solid #eee;\">",
+        "<a href=\"" + link_pdf + "\" style=\"background:#1B4F72;color:white;padding:10px 20px;border-radius:6px;text-decoration:none;font-size:13px;\">Download PDF</a>",
+        "</div>",
+        "</div>",
+        "<div style=\"padding:10px 24px;background:#f5f5f5;border-radius:0 0 8px 8px;font-size:11px;color:#999;text-align:center;\">",
+        "  3R Digest Agent &#183; Return &#183; Recruit &#183; Retain",
+        "</div>",
+        "</body></html>",
+    ]
+    return "\n".join(parts)
 
-    return (
-        "<html><head><meta charset=\"utf-8\"></head>"
-        "<body style=\"font-family:Arial,sans-serif;max-width:660px;margin:auto;color:#222;\">\n"
-        "<div style=\"background:#1B4F72;padding:20px 24px;border-radius:8px 8px 0 0;\">\n"
-        "  <h2 style=\"color:white;margin:0;font-size:20px;\">3R Model -- Human Capital Digest</h2>\n"
-        f"  <p style=\"color:#AED6F1;margin:6px 0 0;font-size:13px;\">{TODAY_STR} &#183; Weekly</p>\n"
-        "</div>\n"
-        "<div style=\"padding:20px 24px;background:#ffffff;border:1px solid #ddd;border-top:none;\">\n"
-        "<div style=\"background:#EBF5FB;border-left:4px solid #1B4F72;padding:12px 16px;"
-        "margin-bottom:16px;border-radius:0 4px 4px 0;\">\n"
-        f"  <p style=\"margin:0;font-size:13px;line-height:1.6;color:#1B4F72;\">"
-        f"  <strong>Key insight:</strong> {insight}</p>\n"
-        "</div>\n"
-        f"{sections_html}"
-        "<div style=\"margin-top:20px;padding-top:16px;border-top:1px solid #eee;\">\n"
-        f"  <a href=\"{link_pdf}\" style=\"background:#1B4F72;color:white;padding:10px 20px;"
-        "border-radius:6px;text-decoration:none;font-size:13px;\">Download PDF</a>\n"
-        "</div>\n"
-        "</div>\n"
-        "<div style=\"padding:10px 24px;background:#f5f5f5;border-radius:0 0 8px 8px;"
-        "font-size:11px;color:#999;text-align:center;\">\n"
-        "  3R Digest Agent &#183; Return &#183; Recruit &#183; Retain\n"
-        "</div>\n"
-        "</body></html>"
-    )
 
 def send_emails(emails, digest, pdf_path, link_pdf):
     body = build_email_body(digest, link_pdf)
