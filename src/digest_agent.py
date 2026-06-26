@@ -361,6 +361,186 @@ def get_email_list():
     return emails
 
 
+SECTION_STYLES = {
+    "return":         {"color": "#0891B2", "bg": "#ECFEFF", "label": "RETURN"},
+    "recruit":        {"color": "#7C3AED", "bg": "#F5F3FF", "label": "RECRUIT"},
+    "retain":         {"color": "#059669", "bg": "#ECFDF5", "label": "RETAIN"},
+    "global_context": {"color": "#D97706", "bg": "#FFFBEB", "label": "GLOBAL CONTEXT"},
+}
+
+
+def build_email_body(digest, link_pdf):
+    insight  = digest.get("key_insight_en", "")
+    headline = digest.get("key_insight_en", "3R Human Capital Digest")
+    articles_html = ""
+    for sec_key in ["return", "recruit", "retain", "global_context"]:
+        items = digest.get("sections", {}).get(sec_key, [])
+        if not items:
+            continue
+        s = SECTION_STYLES[sec_key]
+        color = s["color"]
+        label = s["label"]
+        for item in items:
+            t   = item.get("title_en")    or item.get("title_ua", "")
+            txt = item.get("summary_en")  or item.get("summary_ua", "")
+            rel = item.get("relevance_en")or item.get("relevance_ua", "")
+            u   = item.get("url", "")
+            src = item.get("source", "")
+            pill = '<span style="display:inline-block;padding:3px 9px;font-size:10px;font-weight:700;letter-spacing:0.09em;text-transform:uppercase;color:#fff;background:' + color + ';border-radius:3px">' + label + '</span>'
+            art  = '<div style="padding:22px 0;border-top:1px solid #E5E7EB">' + pill
+            art += '<h2 style="margin:12px 0 0;font-size:16px;line-height:1.35;font-weight:700;color:#111827">' + t + '</h2>'
+            art += '<p style="margin:7px 0 0;font-size:14px;line-height:1.55;color:#4B5563">' + txt + '</p>'
+            if rel:
+                art += '<p style="margin:10px 0 0;font-size:13px;font-style:italic;line-height:1.5;color:#6B7280">3R: ' + rel + '</p>'
+            if src or u:
+                display = src if src else u[:60]
+                lnk = ('<a href="' + u + '" style="color:#9CA3AF;text-decoration:none">' + display + '</a>') if u else display
+                art += '<div style="margin-top:10px;font-size:10.5px;letter-spacing:0.07em;text-transform:uppercase;color:#9CA3AF">' + lnk + '</div>'
+            art += '</div>'
+            articles_html += art
+    btn = '<a href="' + link_pdf + '" style="display:inline-block;padding:10px 22px;background:#5B4FCF;color:#fff;font-size:13px;font-weight:600;text-decoration:none;border-radius:4px">Download PDF</a>'
+    return (
+        '<html><head><meta charset="utf-8"></head>'
+        '<body style="margin:0;padding:0;background:#f3f4f6;font-family:Helvetica Neue,Helvetica,Arial,sans-serif">'
+        '<table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:24px 12px">'
+        '<div style="background:#FFFFFF;max-width:660px;width:100%">'
+        '<div style="height:4px;background:#5B4FCF"></div>'
+        '<div style="padding:28px 40px 0">'
+        '<div style="display:flex;justify-content:space-between;align-items:baseline">'
+        '<div style="font-size:13px;font-weight:700;letter-spacing:0.2em;color:#111827">3R MODEL</div>'
+        '<div style="font-size:13px;color:#6B7280">Human Capital Digest</div>'
+        '</div>'
+        '<div style="margin-top:6px;font-size:12px;color:#6B7280">' + TODAY_STR + ' &middot; Weekly Intelligence</div>'
+        '</div>'
+        '<div style="padding:26px 40px 0">'
+        '<h1 style="margin:0;font-size:27px;line-height:1.22;font-weight:800;letter-spacing:-0.015em;color:#111827">' + headline + '</h1>'
+        '</div>'
+        '<div style="padding:20px 40px 0">'
+        '<div style="background:#EEF2FF;border-left:3px solid #5B4FCF;padding:16px 18px;font-size:14px;line-height:1.55;color:#1F2937">' + insight + '</div>'
+        '</div>'
+        '<div style="padding:6px 40px 0">' + articles_html + '</div>'
+        '<div style="padding:20px 40px 28px;border-top:1px solid #E5E7EB;margin-top:8px">' + btn + '</div>'
+        '<div style="padding:16px 40px 28px;font-size:11px;line-height:1.7;color:#9CA3AF;border-top:1px solid #E5E7EB">'
+        "3R Digest &middot; Weekly Intelligence on Ukraine's Human Capital"
+        '</div>'
+        '</div>'
+        '</td></tr></table>'
+        '</body></html>'
+    )
+
+
+def build_pdf(digest, filename):
+    from reportlab.lib import colors as rlc
+    STYLES_PDF = {
+        "return":         {"color": rlc.HexColor("#0891B2"), "bg": rlc.HexColor("#ECFEFF"), "label": "RETURN"},
+        "recruit":        {"color": rlc.HexColor("#7C3AED"), "bg": rlc.HexColor("#F5F3FF"), "label": "RECRUIT"},
+        "retain":         {"color": rlc.HexColor("#059669"), "bg": rlc.HexColor("#ECFDF5"), "label": "RETAIN"},
+        "global_context": {"color": rlc.HexColor("#D97706"), "bg": rlc.HexColor("#FFFBEB"), "label": "GLOBAL CONTEXT"},
+    }
+    ACCENT   = rlc.HexColor("#5B4FCF")
+    LIGHT    = rlc.HexColor("#EEF2FF")
+    C_DARK   = rlc.HexColor("#111827")
+    C_SEC    = rlc.HexColor("#4B5563")
+    C_MUTED  = rlc.HexColor("#6B7280")
+    C_XMUTED = rlc.HexColor("#9CA3AF")
+    doc = SimpleDocTemplate(filename, pagesize=A4,
+                            leftMargin=20*mm, rightMargin=20*mm,
+                            topMargin=20*mm, bottomMargin=20*mm)
+    S = getSampleStyleSheet()
+    def ps(name, **kw):
+        return ParagraphStyle(name, parent=S["Normal"], **kw)
+    label_s  = ps("lb",  fontSize=9,  fontName="Helvetica-Bold",    textColor=C_DARK, spaceAfter=1*mm, letterSpacing=2)
+    sub_s    = ps("su",  fontSize=10, fontName="Helvetica",          textColor=C_MUTED, spaceAfter=6*mm)
+    h1_s     = ps("h1",  fontSize=24, fontName="Helvetica-Bold",    textColor=C_DARK, leading=28, spaceAfter=4*mm)
+    ins_s    = ps("ins", fontSize=13, fontName="Helvetica",          textColor=rlc.HexColor("#1F2937"), leading=18, spaceAfter=6*mm, backColor=LIGHT, borderWidth=0, leftIndent=6*mm, borderPad=4*mm)
+    ititle_s = ps("it",  fontSize=13, fontName="Helvetica-Bold",    textColor=C_DARK, leading=17, spaceAfter=2*mm)
+    ibody_s  = ps("ib",  fontSize=11, fontName="Helvetica",          textColor=C_SEC, leading=16, spaceAfter=2*mm)
+    irel_s   = ps("ir",  fontSize=10, fontName="Helvetica-Oblique", textColor=C_MUTED, leading=14, spaceAfter=2*mm)
+    src_s    = ps("sr",  fontSize=8,  fontName="Helvetica",          textColor=C_XMUTED, spaceAfter=4*mm, letterSpacing=0.5)
+    foot_s   = ps("ft",  fontSize=9,  fontName="Helvetica",          textColor=C_XMUTED, alignment=0)
+    story = []
+    bar = Table([[""]], colWidths=[170*mm], rowHeights=[2*mm])
+    bar.setStyle(TableStyle([("BACKGROUND",(0,0),(-1,-1),ACCENT),("TOPPADDING",(0,0),(-1,-1),0),("BOTTOMPADDING",(0,0),(-1,-1),0)]))
+    story.append(bar)
+    story.append(Spacer(1, 6*mm))
+    story.append(Paragraph("3R MODEL", label_s))
+    story.append(Paragraph("Human Capital Digest &middot; " + TODAY_STR, sub_s))
+    story.append(HRFlowable(width="100%", thickness=0.5, color=rlc.HexColor("#E5E7EB"), spaceAfter=4*mm))
+    headline = digest.get("key_insight_en", "")
+    story.append(Paragraph(headline, h1_s))
+    story.append(Paragraph(headline, ins_s))
+    story.append(Spacer(1, 4*mm))
+    for sec_key in ["return", "recruit", "retain", "global_context"]:
+        items = digest.get("sections", {}).get(sec_key, [])
+        if not items:
+            continue
+        s   = STYLES_PDF[sec_key]
+        clr = s["color"]
+        bg  = s["bg"]
+        lbl = s["label"]
+        slabel_s = ps("sl_" + sec_key, fontSize=9, fontName="Helvetica-Bold", letterSpacing=1.5, textColor=clr, spaceAfter=2*mm)
+        hdr = Table([[Paragraph(lbl, slabel_s)]], colWidths=[170*mm])
+        hdr.setStyle(TableStyle([("BACKGROUND",(0,0),(-1,-1),bg),("LEFTPADDING",(0,0),(-1,-1),10),("TOPPADDING",(0,0),(-1,-1),7),("BOTTOMPADDING",(0,0),(-1,-1),7)]))
+        story.append(hdr)
+        story.append(Spacer(1, 2*mm))
+        for item in items:
+            t   = item.get("title_en")    or item.get("title_ua", "")
+            txt = item.get("summary_en")  or item.get("summary_ua", "")
+            rel = item.get("relevance_en")or item.get("relevance_ua", "")
+            src = item.get("source", "")
+            story.append(Paragraph(t, ititle_s))
+            story.append(Paragraph(txt, ibody_s))
+            if rel:
+                story.append(Paragraph("3R: " + rel, irel_s))
+            if src:
+                story.append(Paragraph(src.upper(), src_s))
+            story.append(HRFlowable(width="100%", thickness=0.3, color=rlc.HexColor("#E5E7EB"), spaceAfter=3*mm))
+    story.append(Spacer(1, 4*mm))
+    story.append(Paragraph(
+        "3R Digest &middot; Weekly Intelligence on Ukraine's Human Capital &middot; " + TODAY_STR,
+        foot_s))
+    doc.build(story)
+    log.info(f"PDF generated: {filename}")
+
+
+def upload_to_github(filepath, week_tag):
+    if not GITHUB_TOKEN:
+        log.warning("No GITHUB_TOKEN -- skipping upload")
+        return ""
+    filename = Path(filepath).name
+    with open(filepath, "rb") as f:
+        encoded_content = base64.b64encode(f.read()).decode()
+    path_in_repo = f"digests/{week_tag}/{filename}"
+    api_url = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{path_in_repo}"
+    hdrs = {"Authorization": f"token {GITHUB_TOKEN}", "Content-Type": "application/json"}
+    check = requests.get(api_url, headers=hdrs)
+    body = {"message": f"Add digest {week_tag}", "content": encoded_content}
+    if check.status_code == 200:
+        body["sha"] = check.json()["sha"]
+    resp = requests.put(api_url, headers=hdrs, json=body)
+    if resp.ok:
+        url = f"https://github.com/{GITHUB_REPO}/blob/main/{path_in_repo}"
+        log.info(f"Uploaded: {url}")
+        return url
+    log.warning(f"GitHub upload failed: {resp.status_code}")
+    return ""
+
+
+def get_email_list():
+    if TEST_MODE:
+        log.info("TEST MODE: sending only to svichinskiy@gmail.com")
+        return ["svichinskiy@gmail.com"]
+    creds = Credentials.from_service_account_info(
+        json.loads(SERVICE_ACCOUNT_JSON),
+        scopes=["https://www.googleapis.com/auth/spreadsheets.readonly",
+                "https://www.googleapis.com/auth/drive.readonly"])
+    gc = gspread.authorize(creds)
+    ws = gc.open_by_key(GOOGLE_SHEET_ID).get_worksheet(0)
+    emails = [v.strip() for v in ws.col_values(5) if "@" in v]
+    log.info(f"Loaded {len(emails)} emails")
+    return emails
+
+
 SECTION_COLORS_HEX = {
     "return":         "#1A5276",
     "recruit":        "#145A32",
