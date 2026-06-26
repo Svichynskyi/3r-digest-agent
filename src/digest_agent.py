@@ -284,61 +284,7 @@ def read_rss_sources():
     return articles
 
 
-def search_by_domains():
-    """Google CSE search targeted at specific authoritative domains via siteSearch."""
-    _api_key = os.environ.get("GOOGLE_API_KEY", "")
-    _cse_id  = os.environ.get("GOOGLE_CSE_ID", "")
-    articles = []
-    if not _api_key or not _cse_id:
-        return articles
 
-    # Each entry: (query, site) — Google CSE siteSearch restricts to one domain
-    SITE_QUERIES = [
-        ("Ukraine migration displacement return",       "iom.int"),
-        ("Ukraine refugees return workforce",           "unhcr.org"),
-        ("Ukraine human capital labor education",       "voxukraine.org"),
-        ("Ukraine education migration skills",          "cedos.org.ua"),
-        ("Ukraine labor market workforce reconstruction","worldbank.org"),
-        ("migration skilled workers labor market",      "oecd.org"),
-        ("Ukraine employment workforce skills",         "ilo.org"),
-        ("Ukraine reconstruction talent professionals", "reliefweb.int"),
-        ("Ukraine diaspora brain drain return",         "migrationpolicy.org"),
-        ("Ukraine human capital education workforce",   "atlanticcouncil.org"),
-    ]
-
-    for query, site in SITE_QUERIES:
-        try:
-            params = {
-                "key":        _api_key,
-                "cx":         _cse_id,
-                "q":          query,
-                "num":        5,
-                "dateRestrict": "m1",
-                "siteSearch": site,
-                "siteSearchFilter": "i",   # include only this site
-            }
-            resp = requests.get(
-                "https://www.googleapis.com/customsearch/v1",
-                params=params, timeout=15
-            )
-            resp.raise_for_status()
-            items = resp.json().get("items", [])
-            for item in items:
-                title   = item.get("title", "")
-                url     = item.get("link", "")
-                snippet = item.get("snippet", "")[:300]
-                if title and url:
-                    articles.append({
-                        "title":   title,
-                        "url":     url,
-                        "snippet": snippet,
-                        "source":  site,
-                    })
-            log.info(f"Google CSE [{site}]: {len(items)} articles")
-        except Exception as e:
-            log.warning(f"Google CSE site search failed for {site}: {e}")
-        time.sleep(0.3)
-    return articles
 def collect_all_articles():
     seen, all_articles = set(), []
 
