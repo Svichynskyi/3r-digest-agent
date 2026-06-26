@@ -114,32 +114,44 @@ def mark_articles_sent(articles, history):
     return history
 
 
-def search_articles(query, max_results=6):
+def search_articles(query, max_results=10):
+    """Search using Google Custom Search API — entire web."""
     articles = []
+    _api_key = os.environ.get("GOOGLE_API_KEY", "")
+    _cse_id  = os.environ.get("GOOGLE_CSE_ID", "")
+    if not _api_key or not _cse_id:
+        log.warning("GOOGLE_API_KEY or GOOGLE_CSE_ID not set — skipping search")
+        return articles
     try:
-        _key = os.environ.get("NEWSAPI_KEY", "")
-        if _key:
-            params = {
-                "q": query,
-                "apiKey": _key,
-                "language": "en",
-                "sortBy": "publishedAt",
-                "pageSize": max_results,
-                "from": (datetime.date.today() - datetime.timedelta(days=30)).isoformat(),
-            }
-            resp = requests.get("https://newsapi.org/v2/everything", params=params, timeout=15)
-            resp.raise_for_status()
-            for r in resp.json().get("articles", [])[:max_results]:
-                if r.get("title") and r.get("url"):
-                    articles.append({
-                        "title": r["title"],
-                        "url": r["url"],
-                        "snippet": (r.get("description") or r.get("content") or "")[:300],
-                        "source": r.get("source", {}).get("name", "web"),
-                    })
+        # Google CSE returns max 10 per request
+        params = {
+            "key": _api_key,
+            "cx":  _cse_id,
+            "q":   query,
+            "num": min(max_results, 10),
+            "dateRestrict": "m1",   # last 1 month
+            "lr": "lang_en",
+        }
+        resp = requests.get(
+            "https://www.googleapis.com/customsearch/v1",
+            params=params, timeout=15
+        )
+        resp.raise_for_status()
+        for item in resp.json().get("items", []):
+            title   = item.get("title", "")
+            url     = item.get("link", "")
+            snippet = item.get("snippet", "")[:300]
+            source  = item.get("displayLink", "web")
+            if title and url:
+                articles.append({
+                    "title":   title,
+                    "url":     url,
+                    "snippet": snippet,
+                    "source":  source,
+                })
     except Exception as e:
-        log.warning(f"Search failed for '{query}': {e}")
-    time.sleep(0.5)
+        log.warning(f"Google CSE search failed for '{query}': {e}")
+    time.sleep(0.3)
     return articles
 
 
@@ -218,36 +230,59 @@ def read_rss_sources():
 
 
 def search_by_domains():
-    """NewsAPI search targeted at specific authoritative domains."""
+    """Google CSE search targeted at specific authoritative domains via siteSearch."""
+    _api_key = os.environ.get("GOOGLE_API_KEY", "")
+    _cse_id  = os.environ.get("GOOGLE_CSE_ID", "")
     articles = []
-    _key = os.environ.get("NEWSAPI_KEY", "")
-    if not _key:
+    if not _api_key or not _cse_id:
         return articles
-    for query, domains in NEWSAPI_DOMAIN_QUERIES:
+
+    # Each entry: (query, site) — Google CSE siteSearch restricts to one domain
+    SITE_QUERIES = [
+        ("Ukraine migration displacement return",       "iom.int"),
+        ("Ukraine refugees return workforce",           "unhcr.org"),
+        ("Ukraine human capital labor education",       "voxukraine.org"),
+        ("Ukraine education migration skills",          "cedos.org.ua"),
+        ("Ukraine labor market workforce reconstruction","worldbank.org"),
+        ("migration skilled workers labor market",      "oecd.org"),
+        ("Ukraine employment workforce skills",         "ilo.org"),
+        ("Ukraine reconstruction talent professionals", "reliefweb.int"),
+        ("Ukraine diaspora brain drain return",         "migrationpolicy.org"),
+        ("Ukraine human capital education workforce",   "atlanticcouncil.org"),
+    ]
+
+    for query, site in SITE_QUERIES:
         try:
             params = {
+                "key":        _api_key,
+                "cx":         _cse_id,
                 "q":          query,
-                "apiKey":     _key,
-                "language":   "en",
-                "sortBy":     "publishedAt",
-                "pageSize":   5,
-                "domains":    domains,
-                "from":       (datetime.date.today() - datetime.timedelta(days=30)).isoformat(),
+                "num":        5,
+                "dateRestrict": "m1",
+                "siteSearch": site,
+                "siteSearchFilter": "i",   # include only this site
             }
-            resp = requests.get("https://newsapi.org/v2/everything", params=params, timeout=15)
+            resp = requests.get(
+                "https://www.googleapis.com/customsearch/v1",
+                params=params, timeout=15
+            )
             resp.raise_for_status()
-            for r in resp.json().get("articles", []):
-                if r.get("title") and r.get("url"):
+            items = resp.json().get("items", [])
+            for item in items:
+                title   = item.get("title", "")
+                url     = item.get("link", "")
+                snippet = item.get("snippet", "")[:300]
+                if title and url:
                     articles.append({
-                        "title":   r["title"],
-                        "url":     r["url"],
-                        "snippet": (r.get("description") or r.get("content") or "")[:300],
-                        "source":  r.get("source", {}).get("name", domains.split(",")[0]),
+                        "title":   title,
+                        "url":     url,
+                        "snippet": snippet,
+                        "source":  site,
                     })
-            log.info(f"NewsAPI domains [{domains[:40]}]: {len(articles)} articles so far")
+            log.info(f"Google CSE [{site}]: {len(items)} articles")
         except Exception as e:
-            log.warning(f"NewsAPI domain search failed for '{query}': {e}")
-        time.sleep(0.5)
+            log.warning(f"Google CSE site search failed for {site}: {e}")
+        time.sleep(0.3)
     return articles
 def collect_all_articles():
     seen, all_articles = set(), []
