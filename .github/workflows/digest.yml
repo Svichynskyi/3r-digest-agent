@@ -31,13 +31,14 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Restore sent history (persists between runs)
-        uses: actions/cache@v4
-        with:
-          path: sent_history/
-          key: sent-history-${{ github.run_id }}
-          restore-keys: |
-            sent-history-
+      - name: Check sent history
+        run: |
+          mkdir -p sent_history
+          if [ -f sent_history/sent_urls.json ]; then
+            echo "Sent history loaded: $(cat sent_history/sent_urls.json | python3 -c 'import json,sys; d=json.load(sys.stdin); print(len(d), "entries")')"
+          else
+            echo "No sent history yet — first run"
+          fi
 
       - name: Run digest agent
         env:
@@ -51,6 +52,14 @@ jobs:
         run: |
           mkdir -p logs sent_history
           python src/digest_agent.py
+
+      - name: Commit sent history + digests back to repo
+        run: |
+          git config user.name  "3R Digest Bot"
+          git config user.email "bot@3r-digest"
+          git add sent_history/sent_urls.json digests/ || true
+          git diff --cached --quiet || git commit -m "chore: update sent history + digest [skip ci]"
+          git push || true
 
       - name: Upload logs
         if: always()
