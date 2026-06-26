@@ -66,17 +66,24 @@ SEARCH_QUERIES = [
 ]
 
 # Specialized sources to scrape directly (RSS / pages)
-DIRECT_SOURCES = [
-    # IOM Ukraine
-    "https://ukraine.iom.int/news",
-    # UNHCR Ukraine
-    "https://www.unhcr.org/ua/en/news",
-    # VoxUkraine (English)
-    "https://voxukraine.org/en/category/labour-market/",
-    # Cedos think tank
-    "https://cedos.org.ua/en/researches/",
-    # OECD migration
-    "https://www.oecd.org/en/topics/migration.html",
+RSS_SOURCES = [
+    {"url": "https://www.iom.int/rss.xml",              "source": "IOM"},
+    {"url": "https://ukraine.iom.int/rss.xml",          "source": "IOM Ukraine"},
+    {"url": "https://www.unhcr.org/rss.xml",            "source": "UNHCR"},
+    {"url": "https://reliefweb.int/updates/rss.xml?primary_country=244&theme=3", "source": "ReliefWeb"},
+    {"url": "https://voxukraine.org/feed/",             "source": "VoxUkraine"},
+    {"url": "https://cedos.org.ua/feed/",               "source": "Cedos"},
+    {"url": "https://blogs.worldbank.org/rss.xml",      "source": "World Bank"},
+    {"url": "https://www.oecd.org/migration/rss.xml",   "source": "OECD"},
+    {"url": "https://www.ilo.org/rss.xml",              "source": "ILO"},
+]
+
+# NewsAPI domain-targeted queries (guaranteed coverage of specific outlets)
+NEWSAPI_DOMAIN_QUERIES = [
+    ("Ukraine migration workforce",         "iom.int,unhcr.org,reliefweb.int"),
+    ("Ukraine human capital education",     "voxukraine.org,cedos.org.ua"),
+    ("Ukraine labor market reconstruction", "worldbank.org,oecd.org"),
+    ("Ukraine workforce skills employment", "ilo.org,migration.iom.int"),
 ]
 
 TEST_MODE = os.environ.get("TEST_MODE", "true").lower() == "true"
@@ -136,122 +143,135 @@ def search_articles(query, max_results=6):
     return articles
 
 
-def scrape_direct_sources():
-    """Scrape specialized sources (IOM, UNHCR, VoxUkraine, Cedos, OECD) directly."""
-    from html.parser import HTMLParser
+def read_rss_sources():
+    """Read RSS feeds from specialized sources: IOM, UNHCR, ReliefWeb, VoxUkraine, Cedos, etc."""
+    import xml.etree.ElementTree as ET
+    from urllib.parse import urlparse
 
-    class LinkParser(HTMLParser):
-        def __init__(self, base_url):
-            super().__init__()
-            self.base_url = base_url
-            self.links = []
-            self._cur_href = None
-            self._cur_text = ""
-            self._in_a = False
-
-        def handle_starttag(self, tag, attrs):
-            if tag == "a":
-                attrs_d = dict(attrs)
-                href = attrs_d.get("href", "")
-                if href and not href.startswith("#") and not href.startswith("javascript"):
-                    if href.startswith("/"):
-                        from urllib.parse import urlparse
-                        p = urlparse(self.base_url)
-                        href = f"{p.scheme}://{p.netloc}{href}"
-                    elif not href.startswith("http"):
-                        href = self.base_url.rstrip("/") + "/" + href
-                    self._cur_href = href
-                    self._cur_text = ""
-                    self._in_a = True
-
-        def handle_data(self, data):
-            if self._in_a:
-                self._cur_text += data.strip()
-
-        def handle_endtag(self, tag):
-            if tag == "a" and self._in_a and self._cur_href and len(self._cur_text) > 20:
-                self.links.append((self._cur_href, self._cur_text))
-                self._in_a = False
-                self._cur_href = None
-                self._cur_text = ""
-
-    SOURCE_META = {
-        "ukraine.iom.int":   "IOM Ukraine",
-        "unhcr.org":         "UNHCR",
-        "voxukraine.org":    "VoxUkraine",
-        "cedos.org.ua":      "Cedos",
-        "oecd.org":          "OECD",
-    }
+    RELEVANT_KW = ["ukrain", "migr", "labour", "labor", "skill", "refugee", "return",
+                   "diaspora", "workforce", "educat", "reconstruct", "human capital",
+                   "employ", "veteran", "brain drain", "reskill"]
+    SKIP_KW = ["privacy", "cookie", "terms", "advertis", "subscribe", "newsletter"]
+    cutoff = datetime.date.today() - datetime.timedelta(days=30)
 
     articles = []
-    for url in DIRECT_SOURCES:
+    for feed in RSS_SOURCES:
+        url = feed["url"]
+        src = feed["source"]
         try:
-            resp = requests.get(url, timeout=15, headers={"User-Agent": "Mozilla/5.0"})
+            resp = requests.get(url, timeout=15, headers={
+                "User-Agent": "Mozilla/5.0 (compatible; 3RDigestBot/1.0)",
+                "Accept": "application/rss+xml, application/xml, text/xml, */*",
+            })
             if resp.status_code != 200:
-                log.warning(f"Direct source {url} returned {resp.status_code}")
+                log.warning(f"RSS {src}: HTTP {resp.status_code}")
                 continue
-            parser = LinkParser(url)
-            parser.feed(resp.text)
 
-            # Pick source name
-            src_name = "web"
-            for domain, name in SOURCE_META.items():
-                if domain in url:
-                    src_name = name
-                    break
+            root = ET.fromstring(resp.content)
+            ns = {"atom": "http://www.w3.org/2005/Atom"}
 
-            # Filter links that look like article URLs (contain year or keywords)
-            cutoff = datetime.date.today() - datetime.timedelta(days=30)
-            year_str = str(datetime.date.today().year)
-            prev_year = str(datetime.date.today().year - 1)
+            # Support both RSS <item> and Atom <entry>
+            items = root.findall(".//item") or root.findall(".//atom:entry", ns) or root.findall(".//entry")
             added = 0
-            for href, text in parser.links:
+            for item in items:
                 if added >= 5:
                     break
-                # Basic relevance filter on URL/text
-                combined = (href + " " + text).lower()
-                skip_keywords = ["privacy", "cookie", "contact", "about", "subscribe",
-                                 "login", "register", "donate", "career", "jobs"]
-                if any(k in combined for k in skip_keywords):
+
+                title   = (item.findtext("title") or item.findtext("atom:title", namespaces=ns) or "").strip()
+                link    = (item.findtext("link")  or item.findtext("atom:link", namespaces=ns) or "").strip()
+                desc    = (item.findtext("description") or item.findtext("summary") or
+                           item.findtext("atom:summary", namespaces=ns) or "").strip()
+                pub     = (item.findtext("pubDate") or item.findtext("published") or "")
+
+                # atom:link is an attribute, not text
+                if not link:
+                    link_el = item.find("atom:link", ns) or item.find("link")
+                    if link_el is not None:
+                        link = link_el.get("href", "") or link_el.text or ""
+
+                if not title or not link:
                     continue
-                # Prefer links with year in URL or relevant keywords
-                relevant_kw = ["ukrain", "migr", "labour", "labor", "skill", "refugee",
-                               "return", "diaspora", "workforce", "educat", "reconstruct",
-                               "human capital", "employ", "veter"]
-                is_relevant = any(k in combined for k in relevant_kw)
-                has_year = year_str in href or prev_year in href
-                if is_relevant or has_year:
-                    articles.append({
-                        "title": text[:200],
-                        "url": href,
-                        "snippet": f"From {src_name}: {text[:250]}",
-                        "source": src_name,
-                    })
-                    added += 1
-            log.info(f"Direct scrape {src_name}: {added} articles")
+
+                combined = (title + " " + desc).lower()
+                if any(k in combined for k in SKIP_KW):
+                    continue
+                if not any(k in combined for k in RELEVANT_KW):
+                    continue
+
+                # Strip HTML tags from description
+                import re
+                clean_desc = re.sub(r"<[^>]+>", " ", desc).strip()[:300]
+
+                articles.append({
+                    "title":   title[:200],
+                    "url":     link,
+                    "snippet": clean_desc or title,
+                    "source":  src,
+                })
+                added += 1
+
+            log.info(f"RSS {src}: {added} relevant articles")
         except Exception as e:
-            log.warning(f"Direct source scrape failed for {url}: {e}")
-        time.sleep(1)
+            log.warning(f"RSS {src} failed: {e}")
+        time.sleep(0.5)
     return articles
 
 
+def search_by_domains():
+    """NewsAPI search targeted at specific authoritative domains."""
+    articles = []
+    _key = os.environ.get("NEWSAPI_KEY", "")
+    if not _key:
+        return articles
+    for query, domains in NEWSAPI_DOMAIN_QUERIES:
+        try:
+            params = {
+                "q":          query,
+                "apiKey":     _key,
+                "language":   "en",
+                "sortBy":     "publishedAt",
+                "pageSize":   5,
+                "domains":    domains,
+                "from":       (datetime.date.today() - datetime.timedelta(days=30)).isoformat(),
+            }
+            resp = requests.get("https://newsapi.org/v2/everything", params=params, timeout=15)
+            resp.raise_for_status()
+            for r in resp.json().get("articles", []):
+                if r.get("title") and r.get("url"):
+                    articles.append({
+                        "title":   r["title"],
+                        "url":     r["url"],
+                        "snippet": (r.get("description") or r.get("content") or "")[:300],
+                        "source":  r.get("source", {}).get("name", domains.split(",")[0]),
+                    })
+            log.info(f"NewsAPI domains [{domains[:40]}]: {len(articles)} articles so far")
+        except Exception as e:
+            log.warning(f"NewsAPI domain search failed for '{query}': {e}")
+        time.sleep(0.5)
+    return articles
 def collect_all_articles():
     seen, all_articles = set(), []
 
-    # 1. NewsAPI searches
+    def add(art):
+        if art["url"] and art["url"] not in seen:
+            seen.add(art["url"])
+            all_articles.append(art)
+
+    # 1. NewsAPI — broad keyword searches
     for query in SEARCH_QUERIES:
         log.info(f"Searching: {query}")
         for art in search_articles(query):
-            if art["url"] not in seen:
-                seen.add(art["url"])
-                all_articles.append(art)
+            add(art)
 
-    # 2. Direct specialized sources
-    log.info("Scraping specialized sources (IOM, UNHCR, VoxUkraine, Cedos, OECD)...")
-    for art in scrape_direct_sources():
-        if art["url"] not in seen:
-            seen.add(art["url"])
-            all_articles.append(art)
+    # 2. NewsAPI — domain-targeted searches (IOM, UNHCR, OECD, VoxUkraine, etc.)
+    log.info("Searching authoritative domains via NewsAPI...")
+    for art in search_by_domains():
+        add(art)
+
+    # 3. RSS feeds — direct from specialized sources
+    log.info("Reading RSS feeds (IOM, UNHCR, ReliefWeb, VoxUkraine, Cedos, OECD, ILO)...")
+    for art in read_rss_sources():
+        add(art)
 
     log.info(f"Collected {len(all_articles)} raw articles total")
     return all_articles
