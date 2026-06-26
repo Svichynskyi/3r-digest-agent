@@ -38,20 +38,45 @@ OUTPUT_PDF_UA = f"3R_Digest_{WEEK_TAG}_UA.pdf"
 OUTPUT_PDF_EN = f"3R_Digest_{WEEK_TAG}_EN.pdf"
 
 SEARCH_QUERIES = [
-    "Ukraine diaspora return skilled workers 2026",
-    "Ukraine labor market workforce 2026",
-    "human capital brain drain Ukraine",
-    "Ukraine reskilling retraining workforce",
-    "Ukraine reconstruction talent professionals",
-    "skilled migration labor market Europe 2026",
-    "reskilling upskilling workforce trends 2026",
-    "human capital development policy 2026",
-    "Ukraine veterans employment reintegration",
-    "brain drain developing countries solutions 2026",
-    "workforce skills gap global 2026",
-    "diaspora investment knowledge transfer",
-    "Ukraine education skills training 2026",
-    "labor market migration EU trends 2026",
+    # --- Return: diaspora & circulation ---
+    "Ukraine diaspora return home professionals 2026",
+    "Ukrainian refugees return intentions Europe survey",
+    "brain circulation Ukraine knowledge transfer diaspora",
+    "Ukraine reconstruction workforce returnees",
+
+    # --- Recruit: structural talent gaps ---
+    "Ukraine skilled worker shortage reconstruction 2026",
+    "Ukraine IT professionals talent market 2026",
+    "Ukraine attract international experts specialists",
+    "Ukraine veterans reskilling employment program",
+
+    # --- Retain: conditions & environment ---
+    "Ukraine brain drain education researchers leaving",
+    "Ukraine reskilling retraining workforce program",
+    "Ukraine R&D innovation human capital investment",
+    "Ukraine university graduates employment 2026",
+
+    # --- Global context: migration & labour policy ---
+    "IOM Ukraine migration report 2026",
+    "UNHCR Ukraine displacement return 2026",
+    "OECD migration outlook skilled workers Europe",
+    "EU labor market migration policy 2026",
+    "VoxUkraine human capital labor market",
+    "Cedos Ukraine education migration analysis",
+]
+
+# Specialized sources to scrape directly (RSS / pages)
+DIRECT_SOURCES = [
+    # IOM Ukraine
+    "https://ukraine.iom.int/news",
+    # UNHCR Ukraine
+    "https://www.unhcr.org/ua/en/news",
+    # VoxUkraine (English)
+    "https://voxukraine.org/en/category/labour-market/",
+    # Cedos think tank
+    "https://cedos.org.ua/en/researches/",
+    # OECD migration
+    "https://www.oecd.org/en/topics/migration.html",
 ]
 
 TEST_MODE = os.environ.get("TEST_MODE", "true").lower() == "true"
@@ -110,15 +135,125 @@ def search_articles(query, max_results=6):
     time.sleep(0.5)
     return articles
 
+
+def scrape_direct_sources():
+    """Scrape specialized sources (IOM, UNHCR, VoxUkraine, Cedos, OECD) directly."""
+    from html.parser import HTMLParser
+
+    class LinkParser(HTMLParser):
+        def __init__(self, base_url):
+            super().__init__()
+            self.base_url = base_url
+            self.links = []
+            self._cur_href = None
+            self._cur_text = ""
+            self._in_a = False
+
+        def handle_starttag(self, tag, attrs):
+            if tag == "a":
+                attrs_d = dict(attrs)
+                href = attrs_d.get("href", "")
+                if href and not href.startswith("#") and not href.startswith("javascript"):
+                    if href.startswith("/"):
+                        from urllib.parse import urlparse
+                        p = urlparse(self.base_url)
+                        href = f"{p.scheme}://{p.netloc}{href}"
+                    elif not href.startswith("http"):
+                        href = self.base_url.rstrip("/") + "/" + href
+                    self._cur_href = href
+                    self._cur_text = ""
+                    self._in_a = True
+
+        def handle_data(self, data):
+            if self._in_a:
+                self._cur_text += data.strip()
+
+        def handle_endtag(self, tag):
+            if tag == "a" and self._in_a and self._cur_href and len(self._cur_text) > 20:
+                self.links.append((self._cur_href, self._cur_text))
+                self._in_a = False
+                self._cur_href = None
+                self._cur_text = ""
+
+    SOURCE_META = {
+        "ukraine.iom.int":   "IOM Ukraine",
+        "unhcr.org":         "UNHCR",
+        "voxukraine.org":    "VoxUkraine",
+        "cedos.org.ua":      "Cedos",
+        "oecd.org":          "OECD",
+    }
+
+    articles = []
+    for url in DIRECT_SOURCES:
+        try:
+            resp = requests.get(url, timeout=15, headers={"User-Agent": "Mozilla/5.0"})
+            if resp.status_code != 200:
+                log.warning(f"Direct source {url} returned {resp.status_code}")
+                continue
+            parser = LinkParser(url)
+            parser.feed(resp.text)
+
+            # Pick source name
+            src_name = "web"
+            for domain, name in SOURCE_META.items():
+                if domain in url:
+                    src_name = name
+                    break
+
+            # Filter links that look like article URLs (contain year or keywords)
+            cutoff = datetime.date.today() - datetime.timedelta(days=30)
+            year_str = str(datetime.date.today().year)
+            prev_year = str(datetime.date.today().year - 1)
+            added = 0
+            for href, text in parser.links:
+                if added >= 5:
+                    break
+                # Basic relevance filter on URL/text
+                combined = (href + " " + text).lower()
+                skip_keywords = ["privacy", "cookie", "contact", "about", "subscribe",
+                                 "login", "register", "donate", "career", "jobs"]
+                if any(k in combined for k in skip_keywords):
+                    continue
+                # Prefer links with year in URL or relevant keywords
+                relevant_kw = ["ukrain", "migr", "labour", "labor", "skill", "refugee",
+                               "return", "diaspora", "workforce", "educat", "reconstruct",
+                               "human capital", "employ", "veter"]
+                is_relevant = any(k in combined for k in relevant_kw)
+                has_year = year_str in href or prev_year in href
+                if is_relevant or has_year:
+                    articles.append({
+                        "title": text[:200],
+                        "url": href,
+                        "snippet": f"From {src_name}: {text[:250]}",
+                        "source": src_name,
+                    })
+                    added += 1
+            log.info(f"Direct scrape {src_name}: {added} articles")
+        except Exception as e:
+            log.warning(f"Direct source scrape failed for {url}: {e}")
+        time.sleep(1)
+    return articles
+
+
 def collect_all_articles():
     seen, all_articles = set(), []
+
+    # 1. NewsAPI searches
     for query in SEARCH_QUERIES:
         log.info(f"Searching: {query}")
         for art in search_articles(query):
             if art["url"] not in seen:
                 seen.add(art["url"])
                 all_articles.append(art)
-    log.info(f"Collected {len(all_articles)} raw articles")
+
+    # 2. Direct specialized sources
+    log.info("Scraping specialized sources (IOM, UNHCR, VoxUkraine, Cedos, OECD)...")
+    for art in scrape_direct_sources():
+        if art["url"] not in seen:
+            seen.add(art["url"])
+            all_articles.append(art)
+
+    log.info(f"Collected {len(all_articles)} raw articles total")
     return all_articles
 
 
