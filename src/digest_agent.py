@@ -309,40 +309,79 @@ def get_email_list():
     return emails
 
 
-def build_email_body(digest, link_ua, link_en):
-    exec_ua    = digest.get("executive_summary_ua", "")
-    insight_ua = digest.get("key_insight_ua", "")
-    exec_en    = digest.get("executive_summary_en", "")
+SECTION_COLORS_HEX = {
+    "return":         "#1A5276",
+    "recruit":        "#145A32",
+    "retain":         "#6E2F1A",
+    "global_context": "#4A235A",
+}
+SECTION_LABELS_EMAIL = {
+    "return":         "RETURN -- Restoring Connection",
+    "recruit":        "RECRUIT -- Structural Reinforcement",
+    "retain":         "RETAIN -- Environment for Accumulation",
+    "global_context": "GLOBAL CONTEXT",
+}
+
+def build_email_body(digest, link_pdf):
+    insight = digest.get("key_insight_en", "")
+    exec_en = digest.get("executive_summary_en", "")
+
+    sections_html = ""
+    for sec_key in ["return", "recruit", "retain", "global_context"]:
+        items = digest.get("sections", {}).get(sec_key, [])
+        if not items:
+            continue
+        color = SECTION_COLORS_HEX[sec_key]
+        label = SECTION_LABELS_EMAIL[sec_key]
+        sections_html += (
+            f'<div style="background:{color};padding:8px 16px;margin:20px 0 8px;border-radius:4px;">' +
+            f'<span style="color:white;font-size:13px;font-weight:bold;">{label}</span></div>\n'
+        )
+        for item in items:
+            t   = item.get("title_en")    or item.get("title_ua", "")
+            s   = item.get("summary_en")  or item.get("summary_ua", "")
+            rel = item.get("relevance_en")or item.get("relevance_ua", "")
+            u   = item.get("url", "")
+            src = item.get("source", "")
+            sections_html += (
+                f'<div style="border-left:3px solid {color};padding:8px 12px;margin-bottom:12px;">' +
+                f'<p style="margin:0 0 4px;font-size:14px;font-weight:bold;color:#1B4F72;">{t}</p>' +
+                f'<p style="margin:0 0 4px;font-size:13px;line-height:1.5;color:#333;">{s}</p>'
+            )
+            if rel:
+                sections_html += f'<p style="margin:0 0 4px;font-size:12px;color:#666;font-style:italic;">3R: {rel}</p>'
+            if u:
+                sections_html += f'<a href="{u}" style="font-size:11px;color:#2471A3;">{src or u[:50]}</a>'
+            sections_html += "</div>\n"
+
     return (
-        "<html>\n<head><meta charset=\"utf-8\"></head>\n"
-        "<body style=\"font-family:Arial,sans-serif;max-width:640px;margin:auto;color:#222\">\n"
-        "<div style=\"background:#1B4F72;padding:20px 24px;border-radius:8px 8px 0 0\">\n"
-        "  <h2 style=\"color:white;margin:0\">3R Model &#8212; Human Capital Digest</h2>\n"
-        f"  <p style=\"color:#AED6F1;margin:4px 0 0\">{TODAY_STR} &#183; Weekly Digest</p>\n"
+        "<html><head><meta charset=\"utf-8\"></head>"
+        "<body style=\"font-family:Arial,sans-serif;max-width:660px;margin:auto;color:#222;\">\n"
+        "<div style=\"background:#1B4F72;padding:20px 24px;border-radius:8px 8px 0 0;\">\n"
+        "  <h2 style=\"color:white;margin:0;font-size:20px;\">3R Model -- Human Capital Digest</h2>\n"
+        f"  <p style=\"color:#AED6F1;margin:6px 0 0;font-size:13px;\">{TODAY_STR} &#183; Weekly</p>\n"
         "</div>\n"
-        "<div style=\"padding:20px 24px;background:#f9f9f9;border:1px solid #ddd;border-top:none\">\n"
-        f"  <p style=\"font-size:15px;line-height:1.6\">{exec_ua}</p>\n"
-        "  <div style=\"background:#EBF5FB;border-left:4px solid #1B4F72;padding:12px 16px;"
-        "margin:16px 0;border-radius:0 6px 6px 0\">\n"
-        f"    <strong>Key insight:</strong> {insight_ua}\n"
-        "  </div>\n"
-        f"  <p style=\"font-size:13px;color:#555;line-height:1.5\">{exec_en}</p>\n"
-        "  <div style=\"margin-top:20px\">\n"
-        f"    <a href=\"{link_ua}\" style=\"background:#1B4F72;color:white;padding:10px 20px;"
-        "border-radius:6px;text-decoration:none;font-size:14px;margin-right:10px\">PDF (UA)</a>\n"
-        f"    <a href=\"{link_en}\" style=\"background:#145A32;color:white;padding:10px 20px;"
-        "border-radius:6px;text-decoration:none;font-size:14px\">PDF (EN)</a>\n"
-        "  </div>\n"
+        "<div style=\"padding:20px 24px;background:#ffffff;border:1px solid #ddd;border-top:none;\">\n"
+        "<div style=\"background:#EBF5FB;border-left:4px solid #1B4F72;padding:12px 16px;"
+        "margin-bottom:16px;border-radius:0 4px 4px 0;\">\n"
+        f"  <p style=\"margin:0;font-size:13px;line-height:1.6;color:#1B4F72;\">"
+        f"  <strong>Key insight:</strong> {insight}</p>\n"
         "</div>\n"
-        "<div style=\"padding:12px 24px;background:#eee;border-radius:0 0 8px 8px;"
-        "font-size:11px;color:#888;text-align:center\">\n"
+        f"{sections_html}"
+        "<div style=\"margin-top:20px;padding-top:16px;border-top:1px solid #eee;\">\n"
+        f"  <a href=\"{link_pdf}\" style=\"background:#1B4F72;color:white;padding:10px 20px;"
+        "border-radius:6px;text-decoration:none;font-size:13px;\">Download PDF</a>\n"
+        "</div>\n"
+        "</div>\n"
+        "<div style=\"padding:10px 24px;background:#f5f5f5;border-radius:0 0 8px 8px;"
+        "font-size:11px;color:#999;text-align:center;\">\n"
         "  3R Digest Agent &#183; Return &#183; Recruit &#183; Retain\n"
         "</div>\n"
         "</body></html>"
     )
 
-def send_emails(emails, digest, pdf_ua, pdf_en, link_ua, link_en):
-    body = build_email_body(digest, link_ua, link_en)
+def send_emails(emails, digest, pdf_path, link_pdf):
+    body = build_email_body(digest, link_pdf)
     subject = f"3R Human Capital Digest -- {TODAY_STR}"
     with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
         server.login(GMAIL_USER, GMAIL_APP_PASSWORD)
@@ -352,14 +391,13 @@ def send_emails(emails, digest, pdf_ua, pdf_en, link_ua, link_en):
             msg["To"]      = email
             msg["Subject"] = Header(subject, "utf-8").encode()
             msg.attach(MIMEText(body, "html", "utf-8"))
-            for pdf_path in [pdf_ua, pdf_en]:
-                with open(pdf_path, "rb") as f:
-                    part = MIMEBase("application", "octet-stream")
-                    part.set_payload(f.read())
-                encoders.encode_base64(part)
-                part.add_header("Content-Disposition",
-                                f"attachment; filename={Path(pdf_path).name}")
-                msg.attach(part)
+            with open(pdf_path, "rb") as f:
+                part = MIMEBase("application", "octet-stream")
+                part.set_payload(f.read())
+            encoders.encode_base64(part)
+            part.add_header("Content-Disposition",
+                            f"attachment; filename={Path(pdf_path).name}")
+            msg.attach(part)
             server.sendmail(GMAIL_USER, email, msg.as_string())
             log.info(f"Sent to {email}")
             time.sleep(0.5)
@@ -379,13 +417,12 @@ def main():
         log.warning("Fewer than 5 new articles -- using all collected.")
         new_articles = articles
     digest  = analyse_with_claude(new_articles)
-    build_pdf(digest, OUTPUT_PDF_UA)
-    build_pdf(digest, OUTPUT_PDF_EN)
-    link_ua = upload_to_github(OUTPUT_PDF_UA, WEEK_TAG)
-    link_en = upload_to_github(OUTPUT_PDF_EN, WEEK_TAG)
+    pdf_file = f"3R_Digest_{WEEK_TAG}.pdf"
+    build_pdf(digest, pdf_file)
+    link_pdf = upload_to_github(pdf_file, WEEK_TAG)
     emails  = get_email_list()
     if emails:
-        send_emails(emails, digest, OUTPUT_PDF_UA, OUTPUT_PDF_EN, link_ua, link_en)
+        send_emails(emails, digest, pdf_file, link_pdf)
     save_sent_history(mark_articles_sent(new_articles, history))
     log.info(f"=== Done. Sent to {len(emails)} recipients. ===")
 
