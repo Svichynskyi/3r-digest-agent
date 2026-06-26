@@ -153,26 +153,78 @@ DIGEST_SCHEMA = """{
   "key_insight_en": "The single most important takeaway this week in English"
 }"""
 
+def clean_for_json(text):
+    """Remove characters that break JSON strings."""
+    if not text:
+        return ""
+    # Remove control characters and normalize quotes
+    result = []
+    for ch in str(text):
+        if ch == '"':
+            result.append('\'')  # replace double quotes with single
+        elif ord(ch) < 32 and ch not in ('\n', '\t'):
+            pass  # skip control chars
+        else:
+            result.append(ch)
+    return "".join(result)[:500]  # limit length
+
+
 def analyse_with_claude(articles):
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+    # Clean article content before sending
+    clean_articles = []
+    for a in articles:
+        clean_articles.append({
+            "title": clean_for_json(a.get("title", "")),
+            "url": a.get("url", ""),
+            "snippet": clean_for_json(a.get("snippet", "")),
+            "source": clean_for_json(a.get("source", "")),
+        })
     articles_text = "\n\n".join([
         f"[{i+1}] TITLE: {a['title']}\nURL: {a['url']}\nSNIPPET: {a['snippet']}"
-        for i, a in enumerate(articles)
+        for i, a in enumerate(clean_articles)
     ])
     response = client.messages.create(
         model="claude-sonnet-4-6",
         max_tokens=4000,
         system=SYSTEM_PROMPT,
         messages=[{"role": "user", "content":
-            f"Here are {len(articles)} articles collected this week.\n\n{articles_text}\n\n"
-            f"Analyse through 3R lens. Return ONLY valid JSON:\n{DIGEST_SCHEMA}"}],
+            f"Here are {len(clean_articles)} articles collected this week.\n\n{articles_text}\n\n"
+            f"Analyse through 3R lens. IMPORTANT: Return ONLY valid JSON. "
+            f"Do not use double quotes inside string values - use single quotes or rephrase instead.\n{DIGEST_SCHEMA}"}],
     )
     raw = response.content[0].text.strip()
-    if raw.startswith("```"):
-        raw = raw.split("```")[1]
-        if raw.startswith("json"):
-            raw = raw[4:]
-    return json.loads(raw.strip().rstrip("```").strip())
+    # Strip markdown fences
+    if "```" in raw:
+        parts = raw.split("```")
+        for part in parts:
+            p = part.strip()
+            if p.startswith("json"):
+                p = p[4:].strip()
+            if p.startswith("{"):
+                raw = p
+                break
+    raw = raw.strip()
+    # Try to find JSON object
+    start = raw.find("{")
+    end = raw.rfind("}") + 1
+    if start >= 0 and end > start:
+        raw = raw[start:end]
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError as e:
+        log.error(f"JSON parse error: {e}")
+        log.error(f"Raw response (first 500): {raw[:500]}")
+        # Return minimal fallback digest
+        return {
+            "week": WEEK_TAG,
+            "date_range": TODAY_STR,
+            "executive_summary_ua": "Digest generation encountered a parsing error this week.",
+            "executive_summary_en": "Digest generation encountered a parsing error this week.",
+            "sections": {"return": [], "recruit": [], "retain": [], "global_context": []},
+            "key_insight_en": "System error during digest generation - will retry next week.",
+            "key_insight_ua": "System error during digest generation - will retry next week.",
+        }
 
 
 ACCENT = colors.HexColor("#1B4F72")
