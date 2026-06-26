@@ -115,33 +115,35 @@ def mark_articles_sent(articles, history):
 
 
 def search_articles(query, max_results=10):
-    """Search using Google Custom Search API — entire web."""
+    """Search using Tavily API — entire web, AI-optimized results."""
     articles = []
-    _api_key = os.environ.get("GOOGLE_API_KEY", "")
-    _cse_id  = os.environ.get("GOOGLE_CSE_ID", "")
-    if not _api_key or not _cse_id:
-        log.warning("GOOGLE_API_KEY or GOOGLE_CSE_ID not set — skipping search")
+    _key = os.environ.get("TAVILY_API_KEY", "")
+    if not _key:
+        log.warning("TAVILY_API_KEY not set — skipping search")
         return articles
     try:
-        # Google CSE returns max 10 per request
-        params = {
-            "key": _api_key,
-            "cx":  _cse_id,
-            "q":   query,
-            "num": min(max_results, 10),
-            "dateRestrict": "m1",   # last 1 month
-            "lr": "lang_en",
+        payload = {
+            "query": query,
+            "max_results": max_results,
+            "search_depth": "basic",
+            "include_raw_content": False,
+            "include_domains": [],
+            "exclude_domains": [],
         }
-        resp = requests.get(
-            "https://www.googleapis.com/customsearch/v1",
-            params=params, timeout=15
+        headers = {
+            "Authorization": f"Bearer {_key}",
+            "Content-Type": "application/json",
+        }
+        resp = requests.post(
+            "https://api.tavily.com/search",
+            json=payload, headers=headers, timeout=20
         )
         resp.raise_for_status()
-        for item in resp.json().get("items", []):
+        for item in resp.json().get("results", []):
             title   = item.get("title", "")
-            url     = item.get("link", "")
-            snippet = item.get("snippet", "")[:300]
-            source  = item.get("displayLink", "web")
+            url     = item.get("url", "")
+            snippet = item.get("content", "")[:400]
+            source  = item.get("url", "").split("/")[2] if item.get("url") else "web"
             if title and url:
                 articles.append({
                     "title":   title,
@@ -150,11 +152,64 @@ def search_articles(query, max_results=10):
                     "source":  source,
                 })
     except Exception as e:
-        log.warning(f"Google CSE search failed for '{query}': {e}")
-    time.sleep(0.3)
+        log.warning(f"Tavily search failed for '{query}': {e}")
+    time.sleep(0.2)
     return articles
 
 
+def search_by_domains():
+    """Tavily search targeted at specific authoritative domains."""
+    _key = os.environ.get("TAVILY_API_KEY", "")
+    articles = []
+    if not _key:
+        return articles
+
+    DOMAIN_QUERIES = [
+        ("Ukraine migration displacement return workforce",  ["iom.int", "ukraine.iom.int"]),
+        ("Ukraine refugees return skills employment",        ["unhcr.org"]),
+        ("Ukraine human capital education labor market",     ["voxukraine.org", "cedos.org.ua"]),
+        ("Ukraine reconstruction workforce skills",          ["worldbank.org", "reliefweb.int"]),
+        ("migration skilled workers labor market policy",    ["oecd.org", "migrationpolicy.org"]),
+        ("Ukraine employment reskilling workforce",          ["ilo.org"]),
+        ("Ukraine diaspora brain drain human capital",       ["atlanticcouncil.org"]),
+    ]
+
+    headers = {
+        "Authorization": f"Bearer {_key}",
+        "Content-Type": "application/json",
+    }
+
+    for query, domains in DOMAIN_QUERIES:
+        try:
+            payload = {
+                "query": query,
+                "max_results": 5,
+                "search_depth": "basic",
+                "include_domains": domains,
+            }
+            resp = requests.post(
+                "https://api.tavily.com/search",
+                json=payload, headers=headers, timeout=20
+            )
+            resp.raise_for_status()
+            items = resp.json().get("results", [])
+            for item in items:
+                title   = item.get("title", "")
+                url     = item.get("url", "")
+                snippet = item.get("content", "")[:400]
+                source  = url.split("/")[2] if url else domains[0]
+                if title and url:
+                    articles.append({
+                        "title":   title,
+                        "url":     url,
+                        "snippet": snippet,
+                        "source":  source,
+                    })
+            log.info(f"Tavily domain search [{domains[0]}]: {len(items)} articles")
+        except Exception as e:
+            log.warning(f"Tavily domain search failed for {domains}: {e}")
+        time.sleep(0.2)
+    return articles
 def read_rss_sources():
     """Read RSS feeds from specialized sources: IOM, UNHCR, ReliefWeb, VoxUkraine, Cedos, etc."""
     import xml.etree.ElementTree as ET
