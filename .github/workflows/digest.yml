@@ -48,6 +48,7 @@ jobs:
           GOOGLE_SERVICE_ACCOUNT_JSON:  ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
           DRIVE_FOLDER_NAME:            "3R Human Capital Digest"
           NEWSAPI_KEY:                  ${{ secrets.NEWSAPI_KEY }}
+          SERPER_API_KEY:               ${{ secrets.SERPER_API_KEY }}
           GITHUB_TOKEN:                 ${{ secrets.GITHUB_TOKEN }}
         run: |
           mkdir -p logs sent_history
