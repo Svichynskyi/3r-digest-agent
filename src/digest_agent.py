@@ -108,6 +108,89 @@ def url_fingerprint(url):
 def filter_new_articles(articles, history):
     return [a for a in articles if url_fingerprint(a["url"]) not in history]
 
+def score_articles(articles):
+    """Score articles by 3R relevance. Higher = more relevant."""
+
+    # Keyword groups by 3R pillar — each match adds points
+    RETURN_KW = [
+        "return", "diaspora", "repatriat", "come back", "brain circulation",
+        "returnee", "remittance", "dual engagement", "knowledge transfer",
+        "повернення", "діаспора", "репатріац"
+    ]
+    RECRUIT_KW = [
+        "recruit", "attract talent", "skill shortage", "competency gap",
+        "international expert", "foreign specialist", "talent acquisition",
+        "залучення", "нестача кваліфікації", "спеціаліст"
+    ]
+    RETAIN_KW = [
+        "retain", "brain drain", "reskill", "upskill", "workforce training",
+        "over-qualification", "brain waste", "R&D", "innovation ecosystem",
+        "veteran reintegration", "утримання", "перекваліфікація", "відтік мізків"
+    ]
+    UKRAINE_KW = [
+        "ukraine", "ukrainian", "kyiv", "lviv", "україн", "київ"
+    ]
+    HUMAN_CAPITAL_KW = [
+        "human capital", "labor market", "labour market", "workforce",
+        "migration", "education", "skill", "talent", "employment",
+        "людський капітал", "ринок праці", "робоча сила", "міграц"
+    ]
+    # Sources that are highly authoritative for 3R
+    PRIORITY_SOURCES = [
+        "iom.int", "unhcr.org", "voxukraine.org", "cedos.org.ua",
+        "worldbank.org", "oecd.org", "ilo.org", "reliefweb.int",
+        "migrationpolicy.org", "atlanticcouncil.org", "kse.ua",
+        "foundation.kse.ua", "urc2026", "recovery conference"
+    ]
+
+    scored = []
+    for art in articles:
+        text = (art.get("title", "") + " " + art.get("snippet", "") + " " +
+                art.get("source", "") + " " + art.get("url", "")).lower()
+        score = 0
+
+        # Pillar matches (2 pts each)
+        for kw in RETURN_KW:
+            if kw.lower() in text:
+                score += 2
+        for kw in RECRUIT_KW:
+            if kw.lower() in text:
+                score += 2
+        for kw in RETAIN_KW:
+            if kw.lower() in text:
+                score += 2
+
+        # Ukraine relevance (3 pts each — critical filter)
+        for kw in UKRAINE_KW:
+            if kw.lower() in text:
+                score += 3
+
+        # Human capital domain (1 pt each)
+        for kw in HUMAN_CAPITAL_KW:
+            if kw.lower() in text:
+                score += 1
+
+        # Priority source bonus (5 pts)
+        for src in PRIORITY_SOURCES:
+            if src.lower() in text:
+                score += 5
+                break
+
+        # Recency bonus: if "2026" or "2025" in title/snippet
+        if "2026" in text:
+            score += 3
+        elif "2025" in text:
+            score += 1
+
+        art["_score"] = score
+        scored.append(art)
+
+    # Sort by score descending
+    scored.sort(key=lambda a: a["_score"], reverse=True)
+    log.info(f"Scoring: top scores = {[a['_score'] for a in scored[:10]]}")
+    return scored
+
+
 def mark_articles_sent(articles, history):
     for a in articles:
         history[url_fingerprint(a["url"])] = {
@@ -791,13 +874,16 @@ def _main():
     log.info(f"New: {len(new_articles)} / {len(articles)}")
     if len(new_articles) < 5:
         new_articles = articles
-    print(f"DEBUG: Calling Claude with {len(new_articles)} articles", flush=True)
-    # Limit to 10 most recent articles to keep prompt small and reliable
-    if len(new_articles) > 10:
-        new_articles = new_articles[:10]
-    log.info(f"Analysing {len(new_articles)} articles with Claude...")
-    print(f"ARTICLES TO CLAUDE: {[a.get('title','')[:50] for a in new_articles]}", flush=True)
-    digest  = analyse_with_claude(new_articles)
+
+    # Score all articles by 3R relevance, pick top 10
+    new_articles = score_articles(new_articles)
+    top10 = new_articles[:10]
+    log.info(f"Top 10 from {len(new_articles)} scored articles:")
+    for i, a in enumerate(top10):
+        log.info(f"  [{i+1}] score={a['_score']} | {a.get('title','')[:60]}")
+    print(f"TOP10: {[(a['_score'], a.get('title','')[:40]) for a in top10]}", flush=True)
+
+    digest  = analyse_with_claude(top10)
     print(f"DEBUG: Claude returned digest with keys: {list(digest.keys())}", flush=True)
     log.info(f"Digest ready: {list(digest.get('sections',{}).keys())}")
     pdf_file = f"3R_Digest_{WEEK_TAG}.pdf"
