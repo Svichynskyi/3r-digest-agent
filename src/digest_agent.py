@@ -837,7 +837,7 @@ def get_email_list():
 
 def build_email_body(digest, link_pdf):
     insight  = digest.get("key_insight_en", "")
-    headline = digest.get("key_insight_en", "3R Human Capital Digest")
+    headline = digest.get("executive_summary_en", digest.get("key_insight_en", "3R Human Capital Digest"))
     articles_html = ""
     for sec_key in ["return", "recruit", "retain", "global_context"]:
         items = digest.get("sections", {}).get(sec_key, [])
