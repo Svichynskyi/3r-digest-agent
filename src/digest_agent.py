@@ -606,7 +606,7 @@ def analyse_with_claude(articles):
         f"Analyze these {len(articles)} articles for Ukraine human capital digest (3R Model).\n"
         f"3R: Return=diaspora reactivation, Recruit=fill skill gaps, Retain=prevent brain drain.\n\n"
         f"{articles_text}\n\n"
-        f"Reply with ONLY valid JSON, no markdown, no extra text:\n"
+        f"Reply with ONLY valid JSON, no markdown, no extra text. Keep all text fields under 100 words.\n"
         f'{{"week":"{WEEK_TAG}","date_range":"{TODAY_STR}",'
         f'"executive_summary_en":"2-3 sentences",'
         f'"executive_summary_ua":"2-3 речення",'
@@ -619,7 +619,7 @@ def analyse_with_claude(articles):
 
     response = client.messages.create(
         model="claude-sonnet-4-6",
-        max_tokens=8000,
+        max_tokens=16000,
         messages=[{"role": "user", "content": prompt}],
     )
 
