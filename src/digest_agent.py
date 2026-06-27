@@ -191,6 +191,50 @@ def score_articles(articles):
     return scored
 
 
+def dedup_articles(articles):
+    """Remove near-duplicate articles by title and snippet fingerprint."""
+    import re
+
+    def normalize(text):
+        """Lowercase, remove punctuation, collapse spaces."""
+        text = text.lower()
+        text = re.sub(r"[^\w\s]", " ", text)
+        text = re.sub(r"\s+", " ", text).strip()
+        return text
+
+    def title_fingerprint(title):
+        """First 6 significant words of normalized title."""
+        words = [w for w in normalize(title).split() if len(w) > 3]
+        return " ".join(words[:6])
+
+    def snippet_fingerprint(snippet):
+        """First 60 chars of normalized snippet."""
+        return normalize(snippet)[:60]
+
+    seen_titles = set()
+    seen_snippets = set()
+    unique = []
+
+    for art in articles:
+        tf = title_fingerprint(art.get("title", ""))
+        sf = snippet_fingerprint(art.get("snippet", ""))
+
+        if tf and tf in seen_titles:
+            log.info(f"Dedup (title): {art.get('title','')[:60]}")
+            continue
+        if sf and len(sf) > 20 and sf in seen_snippets:
+            log.info(f"Dedup (snippet): {art.get('title','')[:60]}")
+            continue
+
+        seen_titles.add(tf)
+        if sf:
+            seen_snippets.add(sf)
+        unique.append(art)
+
+    log.info(f"Dedup: {len(articles)} → {len(unique)} unique articles")
+    return unique
+
+
 def mark_articles_sent(articles, history):
     for a in articles:
         history[url_fingerprint(a["url"])] = {
@@ -383,6 +427,7 @@ def collect_all_articles():
         add(art)
 
     log.info(f"Collected {len(all_articles)} raw articles total")
+    all_articles = dedup_articles(all_articles)
     return all_articles
 
 
