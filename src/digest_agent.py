@@ -498,43 +498,37 @@ Return ONLY the JSON array of {top_n} numbers:"""
 
 
 def analyse_with_claude(articles):
+    """Send top 10 articles to Claude and get structured digest."""
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
-    # Step 1: pre-filter to top 25 most relevant
-    if len(articles) > 30:
-        articles = select_top_articles(client, articles, top_n=25)
-
-    # Cap at 10 articles max
+    # Hard cap at 10
     articles = articles[:10]
-    if not articles:
-        log.warning("No articles after filtering")
-        articles = []
     print(f"CLAUDE INPUT: {len(articles)} articles", flush=True)
 
-    # Step 2: build article list text
-    articles_text = "\n\n".join([
-        f"[{i+1}] {a.get('title','')}\nURL: {a.get('url','')}\nSNIPPET: {a.get('snippet','')[:300]}"
-        for i, a in enumerate(articles)
-    ])
+    # Build compact article list — title + source + 120 char snippet only
+    lines_text = []
+    for i, a in enumerate(articles):
+        title   = str(a.get("title", ""))[:80]
+        source  = str(a.get("source", ""))[:40]
+        snippet = str(a.get("snippet", ""))[:120]
+        url     = str(a.get("url", ""))
+        lines_text.append(f"{i+1}. [{source}] {title} | {snippet} | {url}")
+    articles_text = "\n".join(lines_text)
 
-    # Step 3: minimal prompt for reliability
-    articles_list = "\n".join([
-        f"{i+1}. {a.get('title','')[:80]} ({a.get('source','')}) - {a.get('snippet','')[:150]}"
-        for i, a in enumerate(articles)
-    ])
-
-    prompt = f"""You are a 3R Model analyst. Analyze these articles about Ukraine human capital.
-
-3R = Return (diaspora reactivation), Recruit (fill skill gaps), Retain (prevent brain drain).
-
-Articles:
-{articles_list}
-
-Respond with ONLY this JSON (no other text):
-{{"week":"{WEEK_TAG}","date_range":"{TODAY_STR}","executive_summary_en":"2-3 sentences on main 3R signals","executive_summary_ua":"2-3 речення про головні сигнали","key_insight_en":"top brain circulation signal this week","key_insight_ua":"головний сигнал циркуляції","sections":{{"return":[],"recruit":[],"retain":[],"global_context":[]}}}}
-
-For each relevant article add to the right section:
-{{"title_en":"title","title_ua":"назва","summary_en":"summary","summary_ua":"підсумок","relevance_en":"why relevant","relevance_ua":"чому важливо","url":"url","source":"source"}}"""
+    prompt = (
+        f"Analyze these {len(articles)} articles for Ukraine human capital digest (3R Model).\n"
+        f"3R: Return=diaspora reactivation, Recruit=fill skill gaps, Retain=prevent brain drain.\n\n"
+        f"{articles_text}\n\n"
+        f"Reply with ONLY valid JSON, no markdown, no extra text:\n"
+        f'{{"week":"{WEEK_TAG}","date_range":"{TODAY_STR}",'
+        f'"executive_summary_en":"2-3 sentences",'
+        f'"executive_summary_ua":"2-3 речення",'
+        f'"key_insight_en":"top signal",'
+        f'"key_insight_ua":"головний сигнал",'
+        f'"sections":{{"return":[],"recruit":[],"retain":[],"global_context":[]}}}}\n'
+        f'Each section item: {{"title_en":"","title_ua":"","summary_en":"","summary_ua":"",'
+        f'"relevance_en":"","relevance_ua":"","url":"","source":""}}'
+    )
 
     response = client.messages.create(
         model="claude-sonnet-4-6",
@@ -543,10 +537,9 @@ For each relevant article add to the right section:
     )
 
     raw = response.content[0].text.strip()
-    print(f"DEBUG: Claude raw response {len(raw)} chars: {raw[:200]}", flush=True)
-    log.info(f"Claude response: {len(raw)} chars, first 100: {raw[:100]}")
+    print(f"CLAUDE RESPONSE: {len(raw)} chars, starts: {raw[:80]}", flush=True)
 
-    # Write to debug file
+    # Save debug
     try:
         Path("sent_history").mkdir(exist_ok=True)
         with open("sent_history/debug_last_response.txt", "w") as _f:
@@ -554,39 +547,34 @@ For each relevant article add to the right section:
     except Exception:
         pass
 
-    # Strip markdown fences if present
-    if raw.startswith("```"):
-        lines = raw.split("\n")
-        raw = "\n".join(lines[1:-1] if lines[-1].strip() == "```" else lines[1:])
+    # Strip markdown fences
+    if "```" in raw:
+        raw = raw.split("```")[1]
+        if raw.startswith("json"):
+            raw = raw[4:]
     raw = raw.strip()
 
     # Extract JSON object
-    brace_start = raw.find("{")
-    brace_end = raw.rfind("}") + 1
-    if brace_start >= 0 and brace_end > brace_start:
-        raw = raw[brace_start:brace_end]
+    s = raw.find("{")
+    e = raw.rfind("}") + 1
+    if s >= 0 and e > s:
+        raw = raw[s:e]
 
     try:
         return json.loads(raw)
-    except json.JSONDecodeError as e:
-        log.error(f"JSON error at pos {e.pos}: {e.msg}")
-        log.error(f"Context: ...{raw[max(0,e.pos-80):e.pos+80]}...")
-        # Try to fix trailing commas
-        import re as _re
-        fixed = _re.sub(r",\s*}", "}", _re.sub(r",\s*]", "]", raw))
+    except json.JSONDecodeError as err:
+        print(f"JSON ERROR at {err.pos}: {raw[max(0,err.pos-50):err.pos+50]}", flush=True)
+        import re
+        raw2 = re.sub(r",\s*([}\]])", r"\1", raw)
         try:
-            return json.loads(fixed)
+            return json.loads(raw2)
         except Exception:
             pass
-        # Last resort fallback
         return {
-            "week": WEEK_TAG,
-            "date_range": TODAY_STR,
-            "executive_summary_ua": "Помилка генерації дайджесту.",
-            "executive_summary_en": "Digest generation error.",
+            "week": WEEK_TAG, "date_range": TODAY_STR,
+            "executive_summary_en": "Parse error.", "executive_summary_ua": "Помилка.",
+            "key_insight_en": "Error.", "key_insight_ua": "Помилка.",
             "sections": {"return": [], "recruit": [], "retain": [], "global_context": []},
-            "key_insight_en": "System error during digest generation.",
-            "key_insight_ua": "Системна помилка.",
         }
 
 
