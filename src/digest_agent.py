@@ -114,107 +114,68 @@ def mark_articles_sent(articles, history):
     return history
 
 
-def search_articles(query, max_results=10):
-    """Search using Tavily API — entire web, AI-optimized results."""
+def collect_articles_via_claude(queries, max_per_query=8):
+    """Use Claude with web_search tool to find articles — no external search API needed."""
+    import anthropic
+    client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
     articles = []
-    _key = os.environ.get("TAVILY_API_KEY", "")
-    if not _key:
-        log.warning("TAVILY_API_KEY not set — skipping search")
-        return articles
-    try:
-        payload = {
-            "query": query,
-            "max_results": max_results,
-            "search_depth": "basic",
-            "include_raw_content": False,
-            "include_domains": [],
-            "exclude_domains": [],
-        }
-        headers = {
-            "Authorization": f"Bearer {_key}",
-            "Content-Type": "application/json",
-        }
-        resp = requests.post(
-            "https://api.tavily.com/search",
-            json=payload, headers=headers, timeout=20
-        )
-        if resp.status_code != 200:
-            log.warning(f"Tavily HTTP {resp.status_code} for '{query}': {resp.text[:200]}")
-            return articles
-        data = resp.json()
-        results = data.get("results", [])
-        log.info(f"Tavily '{query[:40]}': {len(results)} results")
-        for item in results:
-            title   = item.get("title", "")
-            url     = item.get("url", "")
-            snippet = item.get("content", "")[:400]
-            source  = item.get("url", "").split("/")[2] if item.get("url") else "web"
-            if title and url:
-                articles.append({
-                    "title":   title,
-                    "url":     url,
-                    "snippet": snippet,
-                    "source":  source,
-                })
-    except Exception as e:
-        log.warning(f"Tavily search failed for '{query}': {e}")
-    time.sleep(0.2)
+    seen_urls = set()
+
+    for query in queries:
+        try:
+            response = client.messages.create(
+                model="claude-sonnet-4-6",
+                max_tokens=2000,
+                tools=[{"type": "web_search_20250305", "name": "web_search"}],
+                messages=[{
+                    "role": "user",
+                    "content": f"""Search for recent news and analysis about: {query}
+
+Find {max_per_query} relevant articles from the last 30 days.
+Return ONLY a JSON array, no other text:
+[
+  {{"title": "...", "url": "...", "snippet": "...", "source": "domain.com"}},
+  ...
+]"""
+                }]
+            )
+
+            # Extract text from response (after tool use)
+            full_text = ""
+            for block in response.content:
+                if hasattr(block, 'text'):
+                    full_text += block.text
+
+            # Parse JSON from response
+            import re, json
+            json_match = re.search(r'\[[\s\S]*?\]', full_text, re.DOTALL)
+            if json_match:
+                items = json.loads(json_match.group())
+                for item in items:
+                    url = item.get("url", "")
+                    if url and url not in seen_urls:
+                        seen_urls.add(url)
+                        articles.append({
+                            "title":   item.get("title", ""),
+                            "url":     url,
+                            "snippet": item.get("snippet", "")[:400],
+                            "source":  item.get("source", url.split("/")[2] if "/" in url else "web"),
+                        })
+            log.info(f"Claude web_search '{query[:40]}': {len(articles)} total so far")
+        except Exception as e:
+            log.warning(f"Claude web_search failed for '{query}': {e}")
+        time.sleep(1)
     return articles
+
+
+def search_articles(query, max_results=10):
+    """Wrapper — kept for compatibility, uses Claude web_search internally."""
+    return []  # All search now done via collect_articles_via_claude
 
 
 def search_by_domains():
-    """Tavily search targeted at specific authoritative domains."""
-    _key = os.environ.get("TAVILY_API_KEY", "")
-    articles = []
-    if not _key:
-        return articles
-
-    DOMAIN_QUERIES = [
-        ("Ukraine migration displacement return workforce",  ["iom.int", "ukraine.iom.int"]),
-        ("Ukraine refugees return skills employment",        ["unhcr.org"]),
-        ("Ukraine human capital education labor market",     ["voxukraine.org", "cedos.org.ua"]),
-        ("Ukraine reconstruction workforce skills",          ["worldbank.org", "reliefweb.int"]),
-        ("migration skilled workers labor market policy",    ["oecd.org", "migrationpolicy.org"]),
-        ("Ukraine employment reskilling workforce",          ["ilo.org"]),
-        ("Ukraine diaspora brain drain human capital",       ["atlanticcouncil.org"]),
-    ]
-
-    headers = {
-        "Authorization": f"Bearer {_key}",
-        "Content-Type": "application/json",
-    }
-
-    for query, domains in DOMAIN_QUERIES:
-        try:
-            payload = {
-                "query": query,
-                "max_results": 5,
-                "search_depth": "basic",
-                "include_domains": domains,
-            }
-            resp = requests.post(
-                "https://api.tavily.com/search",
-                json=payload, headers=headers, timeout=20
-            )
-            resp.raise_for_status()
-            items = resp.json().get("results", [])
-            for item in items:
-                title   = item.get("title", "")
-                url     = item.get("url", "")
-                snippet = item.get("content", "")[:400]
-                source  = url.split("/")[2] if url else domains[0]
-                if title and url:
-                    articles.append({
-                        "title":   title,
-                        "url":     url,
-                        "snippet": snippet,
-                        "source":  source,
-                    })
-            log.info(f"Tavily domain search [{domains[0]}]: {len(items)} articles")
-        except Exception as e:
-            log.warning(f"Tavily domain search failed for {domains}: {e}")
-        time.sleep(0.2)
-    return articles
+    """Wrapper — kept for compatibility, uses Claude web_search internally."""
+    return []
 def read_rss_sources():
     """Read RSS feeds from specialized sources: IOM, UNHCR, ReliefWeb, VoxUkraine, Cedos, etc."""
     import xml.etree.ElementTree as ET
@@ -298,15 +259,22 @@ def collect_all_articles():
             seen.add(art["url"])
             all_articles.append(art)
 
-    # 1. NewsAPI — broad keyword searches
-    for query in SEARCH_QUERIES:
-        log.info(f"Searching: {query}")
-        for art in search_articles(query):
-            add(art)
+    # 1. Claude web_search — broad 3R-relevant queries
+    log.info("Searching via Claude web_search tool...")
+    for art in collect_articles_via_claude(SEARCH_QUERIES, max_per_query=6):
+        add(art)
 
-    # 2. NewsAPI — domain-targeted searches (IOM, UNHCR, OECD, VoxUkraine, etc.)
-    log.info("Searching authoritative domains via NewsAPI...")
-    for art in search_by_domains():
+    # 2. Claude web_search — domain-targeted queries for authoritative sources
+    DOMAIN_QUERIES = [
+        "site:iom.int OR site:ukraine.iom.int Ukraine migration return workforce 2026",
+        "site:unhcr.org Ukraine displacement return skills",
+        "site:voxukraine.org OR site:cedos.org.ua Ukraine human capital education labor",
+        "site:worldbank.org OR site:oecd.org Ukraine workforce reconstruction migration",
+        "site:ilo.org OR site:reliefweb.int Ukraine employment reskilling veterans",
+        "site:migrationpolicy.org OR site:atlanticcouncil.org Ukraine diaspora brain drain",
+    ]
+    log.info("Searching authoritative domains via Claude web_search...")
+    for art in collect_articles_via_claude(DOMAIN_QUERIES, max_per_query=4):
         add(art)
 
     # 3. RSS feeds — direct from specialized sources
