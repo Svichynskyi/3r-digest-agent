@@ -421,9 +421,12 @@ def analyse_with_claude(articles):
     if len(articles) > 30:
         articles = select_top_articles(client, articles, top_n=25)
 
+    # Cap at 10 articles max
+    articles = articles[:10]
     if not articles:
         log.warning("No articles after filtering")
         articles = []
+    print(f"CLAUDE INPUT: {len(articles)} articles", flush=True)
 
     # Step 2: build article list text
     articles_text = "\n\n".join([
@@ -431,39 +434,24 @@ def analyse_with_claude(articles):
         for i, a in enumerate(articles)
     ])
 
-    # Step 3: ask Claude — use streaming=False, simple response
-    prompt = f"""Analyze these {len(articles)} articles through the 3R Model lens and produce a weekly digest.
+    # Step 3: minimal prompt for reliability
+    articles_list = "\n".join([
+        f"{i+1}. {a.get('title','')[:80]} ({a.get('source','')}) - {a.get('snippet','')[:150]}"
+        for i, a in enumerate(articles)
+    ])
 
-{articles_text}
+    prompt = f"""You are a 3R Model analyst. Analyze these articles about Ukraine human capital.
 
-Return a JSON object with exactly this structure (use only double quotes, no trailing commas):
-{{
-  "week": "{WEEK_TAG}",
-  "date_range": "{TODAY_STR}",
-  "executive_summary_ua": "3-4 речення українською про головні сигнали циркуляції цього тижня",
-  "executive_summary_en": "3-4 sentences about main circulation signals this week",
-  "key_insight_ua": "Найважливіший сигнал циркуляції людського капіталу цього тижня — українською",
-  "key_insight_en": "The single most important brain circulation signal this week",
-  "sections": {{
-    "return": [
-      {{
-        "title_ua": "назва українською",
-        "title_en": "title in english",
-        "summary_ua": "короткий підсумок",
-        "summary_en": "brief summary",
-        "relevance_ua": "що це сигналізує для Return",
-        "relevance_en": "what circulation transaction this signals",
-        "url": "https://...",
-        "source": "source name"
-      }}
-    ],
-    "recruit": [],
-    "retain": [],
-    "global_context": []
-  }}
-}}
+3R = Return (diaspora reactivation), Recruit (fill skill gaps), Retain (prevent brain drain).
 
-Select 10-15 best articles total. Return ONLY the JSON object, nothing else."""
+Articles:
+{articles_list}
+
+Respond with ONLY this JSON (no other text):
+{{"week":"{WEEK_TAG}","date_range":"{TODAY_STR}","executive_summary_en":"2-3 sentences on main 3R signals","executive_summary_ua":"2-3 речення про головні сигнали","key_insight_en":"top brain circulation signal this week","key_insight_ua":"головний сигнал циркуляції","sections":{{"return":[],"recruit":[],"retain":[],"global_context":[]}}}}
+
+For each relevant article add to the right section:
+{{"title_en":"title","title_ua":"назва","summary_en":"summary","summary_ua":"підсумок","relevance_en":"why relevant","relevance_ua":"чому важливо","url":"url","source":"source"}}"""
 
     response = client.messages.create(
         model="claude-sonnet-4-6",
@@ -804,7 +792,11 @@ def _main():
     if len(new_articles) < 5:
         new_articles = articles
     print(f"DEBUG: Calling Claude with {len(new_articles)} articles", flush=True)
+    # Limit to 10 most recent articles to keep prompt small and reliable
+    if len(new_articles) > 10:
+        new_articles = new_articles[:10]
     log.info(f"Analysing {len(new_articles)} articles with Claude...")
+    print(f"ARTICLES TO CLAUDE: {[a.get('title','')[:50] for a in new_articles]}", flush=True)
     digest  = analyse_with_claude(new_articles)
     print(f"DEBUG: Claude returned digest with keys: {list(digest.keys())}", flush=True)
     log.info(f"Digest ready: {list(digest.get('sections',{}).keys())}")
