@@ -915,7 +915,25 @@ def _main():
     log.info(f"Top 10 from {len(new_articles)} scored articles:")
     for i, a in enumerate(top10):
         log.info(f"  [{i+1}] score={a['_score']} | {a.get('title','')[:60]}")
-    print(f"TOP10: {[(a['_score'], a.get('title','')[:40]) for a in top10]}", flush=True)
+
+    # Write full scored list to repo for transparency
+    try:
+        import datetime as _dt
+        lines = [f"# 3R Digest — Scored Articles — {WEEK_TAG}\n",
+                 f"Total collected: {len(new_articles)} articles\n\n",
+                 f"## TOP 10 (sent to Claude)\n\n"]
+        for i, a in enumerate(new_articles[:10]):
+            lines.append(f"{i+1}. **score={a['_score']}** | {a.get('title','')}\n")
+            lines.append(f"   {a.get('url','')}\n\n")
+        lines.append(f"\n## ALL SCORED ARTICLES ({len(new_articles)} total)\n\n")
+        for i, a in enumerate(new_articles):
+            lines.append(f"{i+1}. score={a['_score']} | {a.get('title','')}\n")
+            lines.append(f"   {a.get('url','')}\n\n")
+        Path("sent_history").mkdir(exist_ok=True)
+        with open(f"sent_history/scored_{WEEK_TAG}.md", "w") as _f:
+            _f.writelines(lines)
+    except Exception as e:
+        log.warning(f"Could not write scored list: {e}")
 
     digest  = analyse_with_claude(top10)
     print(f"DEBUG: Claude returned digest with keys: {list(digest.keys())}", flush=True)
