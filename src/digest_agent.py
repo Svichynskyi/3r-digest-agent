@@ -114,68 +114,90 @@ def mark_articles_sent(articles, history):
     return history
 
 
-def collect_articles_via_claude(queries, max_per_query=8):
-    """Use Claude with web_search tool to find articles — no external search API needed."""
-    import anthropic
-    client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-    articles = []
-    seen_urls = set()
-
-    for query in queries:
-        try:
-            response = client.messages.create(
-                model="claude-sonnet-4-6",
-                max_tokens=2000,
-                tools=[{"type": "web_search_20250305", "name": "web_search"}],
-                messages=[{
-                    "role": "user",
-                    "content": f"""Search for recent news and analysis about: {query}
-
-Find {max_per_query} relevant articles from the last 30 days.
-Return ONLY a JSON array, no other text:
-[
-  {{"title": "...", "url": "...", "snippet": "...", "source": "domain.com"}},
-  ...
-]"""
-                }]
-            )
-
-            # Extract text from response (after tool use)
-            full_text = ""
-            for block in response.content:
-                if hasattr(block, 'text'):
-                    full_text += block.text
-
-            # Parse JSON from response
-            import re, json
-            json_match = re.search(r'\[[\s\S]*?\]', full_text, re.DOTALL)
-            if json_match:
-                items = json.loads(json_match.group())
-                for item in items:
-                    url = item.get("url", "")
-                    if url and url not in seen_urls:
-                        seen_urls.add(url)
-                        articles.append({
-                            "title":   item.get("title", ""),
-                            "url":     url,
-                            "snippet": item.get("snippet", "")[:400],
-                            "source":  item.get("source", url.split("/")[2] if "/" in url else "web"),
-                        })
-            log.info(f"Claude web_search '{query[:40]}': {len(articles)} total so far")
-        except Exception as e:
-            log.warning(f"Claude web_search failed for '{query}': {e}")
-        time.sleep(1)
-    return articles
-
-
 def search_articles(query, max_results=10):
-    """Wrapper — kept for compatibility, uses Claude web_search internally."""
-    return []  # All search now done via collect_articles_via_claude
+    """Search using Serper.dev — Google results, whole web, no restrictions."""
+    _key = os.environ.get("SERPER_API_KEY", "")
+    if not _key:
+        log.warning("SERPER_API_KEY not set — skipping")
+        return []
+    try:
+        resp = requests.post(
+            "https://google.serper.dev/search",
+            headers={"X-API-KEY": _key, "Content-Type": "application/json"},
+            json={"q": query, "num": max_results, "gl": "ua", "hl": "en"},
+            timeout=15,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        articles = []
+        for item in data.get("organic", []):
+            title   = item.get("title", "")
+            url     = item.get("link", "")
+            snippet = item.get("snippet", "")[:400]
+            source  = url.split("/")[2] if url else "web"
+            if title and url:
+                articles.append({"title": title, "url": url,
+                                  "snippet": snippet, "source": source})
+        # Also include news results if any
+        for item in data.get("news", []):
+            title   = item.get("title", "")
+            url     = item.get("link", "")
+            snippet = item.get("snippet", "")[:400]
+            source  = url.split("/")[2] if url else "web"
+            if title and url:
+                articles.append({"title": title, "url": url,
+                                  "snippet": snippet, "source": source})
+        log.info(f"Serper '{query[:45]}': {len(articles)} results")
+        return articles
+    except Exception as e:
+        log.warning(f"Serper search failed for '{query}': {e}")
+        return []
 
 
 def search_by_domains():
-    """Wrapper — kept for compatibility, uses Claude web_search internally."""
-    return []
+    """Serper site-targeted search for authoritative 3R sources."""
+    _key = os.environ.get("SERPER_API_KEY", "")
+    if not _key:
+        return []
+
+    SITE_QUERIES = [
+        "site:iom.int Ukraine migration return workforce 2026",
+        "site:unhcr.org Ukraine displacement skills employment",
+        "site:voxukraine.org human capital labor market",
+        "site:cedos.org.ua education migration skills",
+        "site:worldbank.org Ukraine workforce reconstruction",
+        "site:oecd.org migration skilled workers labor",
+        "site:ilo.org Ukraine employment reskilling",
+        "site:reliefweb.int Ukraine human capital workforce",
+        "site:migrationpolicy.org Ukraine diaspora brain drain",
+        "site:atlanticcouncil.org Ukraine human capital",
+    ]
+
+    articles = []
+    for q in SITE_QUERIES:
+        try:
+            resp = requests.post(
+                "https://google.serper.dev/search",
+                headers={"X-API-KEY": _key, "Content-Type": "application/json"},
+                json={"q": q, "num": 5, "hl": "en"},
+                timeout=15,
+            )
+            resp.raise_for_status()
+            for item in resp.json().get("organic", []):
+                title  = item.get("title", "")
+                url    = item.get("link", "")
+                if title and url:
+                    articles.append({
+                        "title":   title,
+                        "url":     url,
+                        "snippet": item.get("snippet", "")[:400],
+                        "source":  url.split("/")[2],
+                    })
+            log.info(f"Serper domain '{q[:50]}': {len(articles)} total")
+        except Exception as e:
+            log.warning(f"Serper domain search failed: {e}")
+        time.sleep(0.2)
+    return articles
 def read_rss_sources():
     """Read RSS feeds from specialized sources: IOM, UNHCR, ReliefWeb, VoxUkraine, Cedos, etc."""
     import xml.etree.ElementTree as ET
@@ -259,22 +281,15 @@ def collect_all_articles():
             seen.add(art["url"])
             all_articles.append(art)
 
-    # 1. Claude web_search — broad 3R-relevant queries
-    log.info("Searching via Claude web_search tool...")
-    for art in collect_articles_via_claude(SEARCH_QUERIES, max_per_query=6):
-        add(art)
+    # 1. Serper — broad Google search (whole web)
+    log.info("Searching via Serper (Google)...")
+    for query in SEARCH_QUERIES:
+        for art in search_articles(query):
+            add(art)
 
-    # 2. Claude web_search — domain-targeted queries for authoritative sources
-    DOMAIN_QUERIES = [
-        "site:iom.int OR site:ukraine.iom.int Ukraine migration return workforce 2026",
-        "site:unhcr.org Ukraine displacement return skills",
-        "site:voxukraine.org OR site:cedos.org.ua Ukraine human capital education labor",
-        "site:worldbank.org OR site:oecd.org Ukraine workforce reconstruction migration",
-        "site:ilo.org OR site:reliefweb.int Ukraine employment reskilling veterans",
-        "site:migrationpolicy.org OR site:atlanticcouncil.org Ukraine diaspora brain drain",
-    ]
-    log.info("Searching authoritative domains via Claude web_search...")
-    for art in collect_articles_via_claude(DOMAIN_QUERIES, max_per_query=4):
+    # 2. Serper — domain-targeted for authoritative 3R sources
+    log.info("Searching authoritative domains via Serper...")
+    for art in search_by_domains():
         add(art)
 
     # 3. RSS feeds — direct from specialized sources
