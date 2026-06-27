@@ -209,7 +209,7 @@ def search_articles(query, max_results=10):
         resp = requests.post(
             "https://google.serper.dev/search",
             headers={"X-API-KEY": _key, "Content-Type": "application/json"},
-            json={"q": query, "num": max_results, "gl": "ua", "hl": "en"},
+            json={"q": query, "num": max_results, "gl": "ua", "hl": "en", "tbs": "qdr:w"},
             timeout=15,
         )
         resp.raise_for_status()
@@ -264,7 +264,7 @@ def search_by_domains():
             resp = requests.post(
                 "https://google.serper.dev/search",
                 headers={"X-API-KEY": _key, "Content-Type": "application/json"},
-                json={"q": q, "num": 5, "hl": "en"},
+                json={"q": q, "num": 5, "hl": "en", "tbs": "qdr:w"},
                 timeout=15,
             )
             resp.raise_for_status()
