@@ -756,19 +756,34 @@ def send_emails(emails, digest, pdf_path, link_pdf):
 
 
 def main():
+    import traceback
+    try:
+        _main()
+    except Exception as e:
+        tb = traceback.format_exc()
+        log.error(f"FATAL: {e}\n{tb}")
+        Path("sent_history").mkdir(exist_ok=True)
+        with open("sent_history/debug_error.txt", "w") as _f:
+            _f.write(f"ERROR: {e}\n\n{tb}")
+        raise
+
+
+def _main():
     log.info(f"=== 3R Digest Agent starting -- {WEEK_TAG} ===")
     log.info(f"TEST MODE: {TEST_MODE}")
     articles = collect_all_articles()
+    log.info(f"Collected: {len(articles)} articles")
     if not articles:
         log.error("No articles found. Aborting.")
         return
     history      = load_sent_history()
     new_articles = filter_new_articles(articles, history)
-    log.info(f"New articles: {len(new_articles)} / {len(articles)}")
+    log.info(f"New: {len(new_articles)} / {len(articles)}")
     if len(new_articles) < 5:
-        log.warning("Fewer than 5 new articles -- using all collected.")
         new_articles = articles
+    log.info(f"Analysing {len(new_articles)} articles with Claude...")
     digest  = analyse_with_claude(new_articles)
+    log.info(f"Digest ready: {list(digest.get('sections',{}).keys())}")
     pdf_file = f"3R_Digest_{WEEK_TAG}.pdf"
     build_pdf(digest, pdf_file)
     link_pdf = upload_to_github(pdf_file, WEEK_TAG)
@@ -776,7 +791,7 @@ def main():
     if emails:
         send_emails(emails, digest, pdf_file, link_pdf)
     save_sent_history(mark_articles_sent(new_articles, history))
-    log.info(f"=== Done. Sent to {len(emails)} recipients. ===")
+    log.info(f"=== Done. Sent to {len(emails)} ===")
 
 if __name__ == "__main__":
     main()
