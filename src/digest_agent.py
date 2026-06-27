@@ -444,7 +444,14 @@ def analyse_with_claude(articles):
             f"IMPORTANT: Return ONLY valid JSON. Escape any double quotes inside string values with backslash. No trailing commas.\n{DIGEST_SCHEMA}"}],
     )
     raw = response.content[0].text.strip()
-    log.info(f"Claude response length: {len(raw)} chars")
+    log.info(f"Claude response length: {len(raw)} chars, starts: {raw[:100]}")
+    # Write raw response to debug file for inspection
+    try:
+        Path("digests").mkdir(exist_ok=True)
+        with open("digests/debug_last_response.txt", "w") as _f:
+            _f.write(raw)
+    except Exception:
+        pass
 
     # Strip markdown fences
     if "```" in raw:
