@@ -92,15 +92,57 @@ TEST_MODE = os.environ.get("TEST_MODE", "true").lower() == "true"
 
 
 def load_sent_history():
+    """Load sent history from GitHub repo (source of truth between runs)."""
+    # Try GitHub first
+    if GITHUB_TOKEN:
+        try:
+            import base64 as _b64
+            api_url = f"https://api.github.com/repos/{GITHUB_REPO}/contents/sent_history/sent_urls.json"
+            hdrs = {"Authorization": f"token {GITHUB_TOKEN}"}
+            resp = requests.get(api_url, headers=hdrs)
+            if resp.status_code == 200:
+                data = json.loads(_b64.b64decode(resp.json()["content"]).decode())
+                log.info(f"Loaded sent_history from GitHub: {len(data)} URLs")
+                return data
+        except Exception as e:
+            log.warning(f"Could not load sent_history from GitHub: {e}")
+    # Fallback to local file
     if SENT_HISTORY_FILE.exists():
         with open(SENT_HISTORY_FILE) as f:
             return json.load(f)
+    log.info("No sent_history found — starting fresh")
     return {}
 
 def save_sent_history(history):
+    """Save sent history both locally and to GitHub repo via API."""
+    # Local save
     SENT_HISTORY_FILE.parent.mkdir(exist_ok=True)
     with open(SENT_HISTORY_FILE, "w") as f:
         json.dump(history, f, indent=2, ensure_ascii=False)
+
+    # Upload to GitHub so it persists between runs
+    if not GITHUB_TOKEN:
+        log.warning("No GITHUB_TOKEN — sent_history not persisted to repo")
+        return
+    try:
+        import base64 as _b64
+        content_bytes = json.dumps(history, indent=2, ensure_ascii=False).encode()
+        encoded = _b64.b64encode(content_bytes).decode()
+        api_url = f"https://api.github.com/repos/{GITHUB_REPO}/contents/sent_history/sent_urls.json"
+        hdrs = {"Authorization": f"token {GITHUB_TOKEN}", "Content-Type": "application/json"}
+        # Check if file exists (need SHA to update)
+        check = requests.get(api_url, headers=hdrs)
+        body = {"message": f"Update sent_history {WEEK_TAG}",
+                "content": encoded}
+        if check.status_code == 200:
+            body["sha"] = check.json()["sha"]
+        resp = requests.put(api_url, headers=hdrs, json=body)
+        if resp.ok:
+            log.info(f"sent_history saved to repo ({len(history)} URLs tracked)")
+        else:
+            log.warning(f"sent_history upload failed: {resp.status_code} {resp.text[:100]}")
+    except Exception as e:
+        log.warning(f"Could not upload sent_history: {e}")
 
 def url_fingerprint(url):
     return hashlib.sha256(url.encode()).hexdigest()[:16]
