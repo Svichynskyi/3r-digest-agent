@@ -36,8 +36,6 @@ GITHUB_REPO          = "Svichynskyi/3r-digest-agent"
 SENT_HISTORY_FILE = Path("sent_history/sent_urls.json")
 WEEK_TAG  = datetime.date.today().strftime("%Y-W%V")
 TODAY_STR = datetime.date.today().strftime("%d.%m.%Y")
-OUTPUT_PDF_UA = f"3R_Digest_{WEEK_TAG}_UA.pdf"
-OUTPUT_PDF_EN = f"3R_Digest_{WEEK_TAG}_EN.pdf"
 
 SEARCH_QUERIES = [
     # --- Return: diaspora & circulation ---
@@ -65,27 +63,6 @@ SEARCH_QUERIES = [
     "EU labor market migration policy 2026",
     "VoxUkraine human capital labor market",
     "Cedos Ukraine education migration analysis",
-]
-
-# Specialized sources to scrape directly (RSS / pages)
-RSS_SOURCES = [
-    {"url": "https://www.iom.int/rss.xml",              "source": "IOM"},
-    {"url": "https://ukraine.iom.int/rss.xml",          "source": "IOM Ukraine"},
-    {"url": "https://www.unhcr.org/rss.xml",            "source": "UNHCR"},
-    {"url": "https://reliefweb.int/updates/rss.xml?primary_country=244&theme=3", "source": "ReliefWeb"},
-    {"url": "https://voxukraine.org/feed/",             "source": "VoxUkraine"},
-    {"url": "https://cedos.org.ua/feed/",               "source": "Cedos"},
-    {"url": "https://blogs.worldbank.org/rss.xml",      "source": "World Bank"},
-    {"url": "https://www.oecd.org/migration/rss.xml",   "source": "OECD"},
-    {"url": "https://www.ilo.org/rss.xml",              "source": "ILO"},
-]
-
-# NewsAPI domain-targeted queries (guaranteed coverage of specific outlets)
-NEWSAPI_DOMAIN_QUERIES = [
-    ("Ukraine migration workforce",         "iom.int,unhcr.org,reliefweb.int"),
-    ("Ukraine human capital education",     "voxukraine.org,cedos.org.ua"),
-    ("Ukraine labor market reconstruction", "worldbank.org,oecd.org"),
-    ("Ukraine workforce skills employment", "ilo.org,migration.iom.int"),
 ]
 
 TEST_MODE = os.environ.get("TEST_MODE", "true").lower() == "true"
@@ -473,53 +450,6 @@ def collect_all_articles():
     return all_articles
 
 
-SYSTEM_PROMPT = """You are an expert analyst for the 3R Model -- a human capital management framework for Ukraine based on brain circulation.
-
-THE 3R MODEL:
-The model's core unit is the CIRCULATION TRANSACTION: an interaction where a human capital carrier and an economic actor jointly produce a shared outcome (knowledge applied, decision implemented, collaboration formed). A contact or registration is NOT a transaction.
-
-RETURN -- Restoring Connection:
-Rebuilding trust and reactivating human capital temporarily outside Ukraine.
-Covers: return of citizens, diaspora experience integration, knowledge circulation, restoration of professional networks.
-Goal: not demographic return per se, but ECONOMIC INCLUSION -- human capital generating value regardless of physical location.
-Key signals: dual engagement, diaspora-to-Ukraine knowledge transfer, professional network reactivation.
-
-RECRUIT -- Structural Reinforcement:
-Addressing structural competency gaps by attracting professionals unavailable domestically.
-NOT about headcount -- about targeted adjustment of human capital configuration.
-Covers: identifying competency deficits in strategic sectors, attracting carriers of those competencies, institutional integration.
-Key signals: sector-specific skill shortages, targeted attraction programs, education-demand alignment.
-
-RETAIN -- Environment for Application and Accumulation:
-The CENTRAL element. Creating conditions where human capital is applied, accumulates, and compounds.
-Key problem: BRAIN WASTE -- competencies not fully utilised (measured by over-qualification rate).
-Key lever: RESKILLING -- only effective when DEMAND-COUPLED (tied to specific employer need). Reskilling without demand reproduces brain waste at higher level.
-Reskilling connects to Return: diaspora as mentors and knowledge transfer agents.
-Key signals: reskilling programs with employer demand, R&D environment, over-qualification data, veteran reintegration.
-
-GLOBAL CONTEXT: international trends in migration policy, labor markets, brain drain/circulation in comparable countries.
-
-ANALYTICAL RULES:
-- Classify by what TRANSACTION TYPE the article signals, not just its topic
-- Prioritise articles that indicate actual transactions or conditions enabling them
-- Be analytical, not descriptive -- explain WHY it matters for brain circulation
-- Return ONLY valid JSON, no markdown fences, no extra text"""
-
-DIGEST_SCHEMA = """{
-  "week": "Week 26, 2026",
-  "date_range": "June 22-28, 2026",
-  "executive_summary_ua": "3-4 sentences in Ukrainian: what circulation signals dominated this week and why they matter",
-  "executive_summary_en": "3-4 sentences in English: what circulation signals dominated this week and why they matter",
-  "sections": {
-    "return": [{"title_ua":"","title_en":"","summary_ua":"","summary_en":"","relevance_ua":"what circulation transaction type this signals","relevance_en":"what circulation transaction type this signals","url":"","source":""}],
-    "recruit": [],
-    "retain": [],
-    "global_context": []
-  },
-  "key_insight_ua": "The single most important brain circulation signal this week -- Ukrainian",
-  "key_insight_en": "The single most important brain circulation signal this week -- English"
-}"""
-
 def clean_for_json(text):
     """Remove characters that break JSON strings."""
     if not text:
@@ -532,56 +462,6 @@ def clean_for_json(text):
         else:
             result.append(ch)
     return "".join(result)[:400]
-
-
-def select_top_articles(client, articles, top_n=25):
-    """Step 1: Ask Claude to select the top N most relevant articles for 3R analysis."""
-    clean = []
-    for a in articles:
-        clean.append({
-            "title":   clean_for_json(a.get("title", "")),
-            "url":     a.get("url", ""),
-            "snippet": clean_for_json(a.get("snippet", "")),
-            "source":  clean_for_json(a.get("source", "")),
-        })
-
-    articles_text = "\n".join([
-        f"[{i+1}] {a['title']} | {a['source']} | {a['snippet'][:120]}"
-        for i, a in enumerate(clean)
-    ])
-
-    prompt = f"""You are a 3R Model analyst. Below are {len(clean)} articles collected this week.
-
-3R Model focuses on brain circulation: Return (diaspora/knowledge reactivation), Recruit (structural competency gaps), Retain (reskilling, brain waste reduction, R&D environment).
-
-Select the {top_n} most relevant articles for 3R analysis. An article is relevant if it signals:
-- A circulation transaction or condition enabling one
-- A policy, program, or data point about Ukrainian human capital
-- A global trend directly comparable to Ukraine's situation
-
-Return ONLY a JSON array of the selected article numbers, nothing else.
-Example: [1, 3, 7, 12, 15]
-
-ARTICLES:
-{articles_text}
-
-Return ONLY the JSON array of {top_n} numbers:"""
-
-    resp = client.messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=200,
-        messages=[{"role": "user", "content": prompt}],
-    )
-    raw = resp.content[0].text.strip()
-    # Parse array
-    import re
-    nums = re.findall(r'\d+', raw)
-    selected = [int(n) - 1 for n in nums if 0 < int(n) <= len(clean)][:top_n]
-    if not selected:
-        log.warning("Pre-filter returned no articles — using first 25")
-        selected = list(range(min(top_n, len(clean))))
-    log.info(f"Pre-filter: {len(clean)} → {len(selected)} articles selected")
-    return [articles[i] for i in selected]
 
 
 def analyse_with_claude(articles):
@@ -724,7 +604,7 @@ def build_pdf(digest, filename):
     story.append(Paragraph(f"{TODAY_STR}  ·  Weekly Intelligence", sub_s))
 
     # Big H1
-    headline = digest.get("key_insight_en", "3R Human Capital Digest")
+    headline = digest.get("executive_summary_en", digest.get("key_insight_en", "3R Human Capital Digest"))
     story.append(Paragraph(headline, h1_s))
     story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor("#E5E7EB"),
                              spaceAfter=4*mm))
@@ -831,7 +711,6 @@ def get_email_list():
 
 def build_email_body(digest, link_pdf):
     insight  = digest.get("key_insight_en", "")
-    headline = digest.get("executive_summary_en", digest.get("key_insight_en", "3R Human Capital Digest"))
     articles_html = ""
     for sec_key in ["return", "recruit", "retain", "global_context"]:
         items = digest.get("sections", {}).get(sec_key, [])
@@ -875,8 +754,6 @@ def build_email_body(digest, link_pdf):
         '<div style="font-size:13px;color:#6B7280">Human Capital Digest</div>'
         '</div>'
         '<div style="margin-top:6px;font-size:12px;color:#6B7280">' + TODAY_STR + ' &middot; Weekly Intelligence</div>'
-        '</div>'
-        '<div style="padding:24px 40px 0">'
         '</div>'
         '<div style="padding:20px 40px 0">'
         '<div style="background:#EEF2FF;border-left:3px solid #5B4FCF;padding:16px 18px;font-size:14px;line-height:1.55;color:#1F2937">' + insight + '</div>'
