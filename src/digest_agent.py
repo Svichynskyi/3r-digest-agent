@@ -361,8 +361,7 @@ def clean_for_json(text):
             pass  # skip control chars
         else:
             result.append(ch)
-    # Escape double quotes for JSON safety
-    return "".join(result).replace('\\', '\\\\').replace('"', '\\"')[:500]
+    return "".join(result)[:400]
 
 
 def select_top_articles(client, articles, top_n=25):
