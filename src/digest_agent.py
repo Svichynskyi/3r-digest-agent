@@ -65,6 +65,19 @@ SEARCH_QUERIES = [
     "Cedos Ukraine education migration analysis",
 ]
 
+
+RSS_SOURCES = [
+    {"url": "https://www.iom.int/rss.xml",              "source": "IOM"},
+    {"url": "https://ukraine.iom.int/rss.xml",          "source": "IOM Ukraine"},
+    {"url": "https://www.unhcr.org/rss.xml",            "source": "UNHCR"},
+    {"url": "https://reliefweb.int/updates/rss.xml?primary_country=244&theme=3", "source": "ReliefWeb"},
+    {"url": "https://voxukraine.org/feed/",             "source": "VoxUkraine"},
+    {"url": "https://cedos.org.ua/feed/",               "source": "Cedos"},
+    {"url": "https://blogs.worldbank.org/rss.xml",      "source": "World Bank"},
+    {"url": "https://www.oecd.org/migration/rss.xml",   "source": "OECD"},
+    {"url": "https://www.ilo.org/rss.xml",              "source": "ILO"},
+]
+
 TEST_MODE = os.environ.get("TEST_MODE", "true").lower() == "true"
 
 
