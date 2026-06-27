@@ -441,10 +441,11 @@ def analyse_with_claude(articles):
         messages=[{"role": "user", "content":
             f"Here are {len(clean_articles)} pre-selected articles for this week's 3R digest.\n\n{articles_text}\n\n"
             f"Produce the digest. Select 10-15 best articles total across all sections. "
-            f"IMPORTANT: Return ONLY valid JSON. "
-            f"Do not use double quotes inside string values.\n{DIGEST_SCHEMA}"}],
+            f"IMPORTANT: Return ONLY valid JSON. Escape any double quotes inside string values with backslash. No trailing commas.\n{DIGEST_SCHEMA}"}],
     )
     raw = response.content[0].text.strip()
+    log.info(f"Claude response length: {len(raw)} chars")
+
     # Strip markdown fences
     if "```" in raw:
         parts = raw.split("```")
@@ -456,16 +457,30 @@ def analyse_with_claude(articles):
                 raw = p
                 break
     raw = raw.strip()
-    # Try to find JSON object
+
+    # Find outermost JSON object
     start = raw.find("{")
     end = raw.rfind("}") + 1
     if start >= 0 and end > start:
         raw = raw[start:end]
+
+    # Fix common Claude JSON issues:
+    # 1. Replace curly quotes
+    raw = raw.replace('\u201c', "'").replace('\u201d', "'")
+    raw = raw.replace('\u2018', "'").replace('\u2019', "'")
+
     try:
         return json.loads(raw)
     except json.JSONDecodeError as e:
-        log.error(f"JSON parse error: {e}")
-        log.error(f"Raw response (first 500): {raw[:500]}")
+        log.error(f"JSON parse error: {e} at pos {e.pos}")
+        log.error(f"Context: {raw[max(0,e.pos-100):e.pos+100]}")
+        # Try removing trailing commas
+        try:
+            import re as _re2
+            fixed = _re2.sub(r',\s*([}\]])', r'\1', raw)
+            return json.loads(fixed)
+        except Exception:
+            pass
         # Return minimal fallback digest
         return {
             "week": WEEK_TAG,
