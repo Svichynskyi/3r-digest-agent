@@ -590,7 +590,6 @@ def analyse_with_claude(articles):
 
     # Hard cap at 10
     articles = articles[:10]
-    print(f"CLAUDE INPUT: {len(articles)} articles", flush=True)
 
     # Build compact article list — title + source + 120 char snippet only
     lines_text = []
@@ -624,12 +623,8 @@ def analyse_with_claude(articles):
     )
 
     raw = response.content[0].text.strip()
-    print(f"CLAUDE RESPONSE: {len(raw)} chars, starts: {raw[:80]}", flush=True)
 
     # Print full response to stdout for GitHub Actions logs
-    print(f"CLAUDE_RAW_RESPONSE_START", flush=True)
-    print(raw[:2000], flush=True)
-    print(f"CLAUDE_RAW_RESPONSE_END", flush=True)
 
     # Strip markdown fences
     if "```" in raw:
@@ -647,7 +642,6 @@ def analyse_with_claude(articles):
     try:
         return json.loads(raw)
     except json.JSONDecodeError as err:
-        print(f"JSON ERROR at {err.pos}: {raw[max(0,err.pos-50):err.pos+50]}", flush=True)
         import re
         raw2 = re.sub(r",\s*([}\]])", r"\1", raw)
         try:
@@ -938,10 +932,8 @@ def _main():
     log.info(f"=== 3R Digest Agent starting -- {WEEK_TAG} ===")
     log.info(f"TEST MODE: {TEST_MODE}")
     articles = collect_all_articles()
-    print(f"DEBUG: Collected {len(articles)} articles", flush=True)
     log.info(f"Collected: {len(articles)} articles")
     if not articles:
-        print("DEBUG: No articles — aborting", flush=True)
         log.error("No articles found. Aborting.")
         return
     history      = load_sent_history()
@@ -989,7 +981,6 @@ def _main():
         log.warning(f"Could not upload scored list: {e}")
 
     digest  = analyse_with_claude(top10)
-    print(f"DEBUG: Claude returned digest with keys: {list(digest.keys())}", flush=True)
     log.info(f"Digest ready: {list(digest.get('sections',{}).keys())}")
     pdf_file = f"3R_Digest_{WEEK_TAG}.pdf"
     build_pdf(digest, pdf_file)
