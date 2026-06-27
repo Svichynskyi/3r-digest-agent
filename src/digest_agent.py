@@ -539,13 +539,10 @@ def analyse_with_claude(articles):
     raw = response.content[0].text.strip()
     print(f"CLAUDE RESPONSE: {len(raw)} chars, starts: {raw[:80]}", flush=True)
 
-    # Save debug
-    try:
-        Path("sent_history").mkdir(exist_ok=True)
-        with open("sent_history/debug_last_response.txt", "w") as _f:
-            _f.write(raw[:5000])
-    except Exception:
-        pass
+    # Print full response to stdout for GitHub Actions logs
+    print(f"CLAUDE_RAW_RESPONSE_START", flush=True)
+    print(raw[:2000], flush=True)
+    print(f"CLAUDE_RAW_RESPONSE_END", flush=True)
 
     # Strip markdown fences
     if "```" in raw:
