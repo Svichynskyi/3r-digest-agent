@@ -772,9 +772,13 @@ def build_email_body(digest, link_pdf):
             if rel:
                 art += '<p style="margin:10px 0 0;font-size:13px;font-style:italic;line-height:1.5;color:#6B7280">3R: ' + rel + '</p>'
             if src or u:
-                display = src if src else u[:60]
-                lnk = ('<a href="' + u + '" style="color:#9CA3AF;text-decoration:none">' + display + '</a>') if u else display
-                art += '<div style="margin-top:10px;font-size:10.5px;letter-spacing:0.07em;text-transform:uppercase;color:#9CA3AF">' + lnk + '</div>'
+                # Show source name as label, but link goes to the article URL
+                src_label = src if src else (u.split("/")[2] if u else "")
+                if u:
+                    lnk = ('<a href="' + u + '" style="color:#9CA3AF;text-decoration:none;font-size:10.5px;letter-spacing:0.07em;text-transform:uppercase">' + src_label + ' ↗</a>')
+                else:
+                    lnk = '<span style="color:#9CA3AF;font-size:10.5px;letter-spacing:0.07em;text-transform:uppercase">' + src_label + '</span>'
+                art += '<div style="margin-top:10px">' + lnk + '</div>'
             art += '</div>'
             articles_html += art
     btn = '<a href="' + link_pdf + '" style="display:inline-block;padding:10px 22px;background:#5B4FCF;color:#fff;font-size:13px;font-weight:600;text-decoration:none;border-radius:4px">Download PDF</a>'
