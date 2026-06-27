@@ -420,31 +420,60 @@ def analyse_with_claude(articles):
     if len(articles) > 30:
         articles = select_top_articles(client, articles, top_n=25)
 
-    # Step 2: deep analysis of selected articles
-    clean_articles = []
-    for a in articles:
-        clean_articles.append({
-            "title":   clean_for_json(a.get("title", "")),
-            "url":     a.get("url", ""),
-            "snippet": clean_for_json(a.get("snippet", "")),
-            "source":  clean_for_json(a.get("source", "")),
-        })
+    if not articles:
+        log.warning("No articles after filtering")
+        articles = []
+
+    # Step 2: build article list text
     articles_text = "\n\n".join([
-        f"[{i+1}] TITLE: {a['title']}\nURL: {a['url']}\nSNIPPET: {a['snippet']}"
-        for i, a in enumerate(clean_articles)
+        f"[{i+1}] {a.get('title','')}\nURL: {a.get('url','')}\nSNIPPET: {a.get('snippet','')[:300]}"
+        for i, a in enumerate(articles)
     ])
+
+    # Step 3: ask Claude — use streaming=False, simple response
+    prompt = f"""Analyze these {len(articles)} articles through the 3R Model lens and produce a weekly digest.
+
+{articles_text}
+
+Return a JSON object with exactly this structure (use only double quotes, no trailing commas):
+{{
+  "week": "{WEEK_TAG}",
+  "date_range": "{TODAY_STR}",
+  "executive_summary_ua": "3-4 речення українською про головні сигнали циркуляції цього тижня",
+  "executive_summary_en": "3-4 sentences about main circulation signals this week",
+  "key_insight_ua": "Найважливіший сигнал циркуляції людського капіталу цього тижня — українською",
+  "key_insight_en": "The single most important brain circulation signal this week",
+  "sections": {{
+    "return": [
+      {{
+        "title_ua": "назва українською",
+        "title_en": "title in english",
+        "summary_ua": "короткий підсумок",
+        "summary_en": "brief summary",
+        "relevance_ua": "що це сигналізує для Return",
+        "relevance_en": "what circulation transaction this signals",
+        "url": "https://...",
+        "source": "source name"
+      }}
+    ],
+    "recruit": [],
+    "retain": [],
+    "global_context": []
+  }}
+}}
+
+Select 10-15 best articles total. Return ONLY the JSON object, nothing else."""
+
     response = client.messages.create(
         model="claude-sonnet-4-6",
         max_tokens=4000,
-        system=SYSTEM_PROMPT,
-        messages=[{"role": "user", "content":
-            f"Here are {len(clean_articles)} pre-selected articles for this week's 3R digest.\n\n{articles_text}\n\n"
-            f"Produce the digest. Select 10-15 best articles total across all sections. "
-            f"IMPORTANT: Return ONLY valid JSON. Escape any double quotes inside string values with backslash. No trailing commas.\n{DIGEST_SCHEMA}"}],
+        messages=[{"role": "user", "content": prompt}],
     )
+
     raw = response.content[0].text.strip()
-    log.info(f"Claude response length: {len(raw)} chars, starts: {raw[:100]}")
-    # Write raw response to debug file for inspection
+    log.info(f"Claude response: {len(raw)} chars, first 100: {raw[:100]}")
+
+    # Write to debug file
     try:
         Path("sent_history").mkdir(exist_ok=True)
         with open("sent_history/debug_last_response.txt", "w") as _f:
@@ -452,50 +481,39 @@ def analyse_with_claude(articles):
     except Exception:
         pass
 
-    # Strip markdown fences
-    if "```" in raw:
-        parts = raw.split("```")
-        for part in parts:
-            p = part.strip()
-            if p.startswith("json"):
-                p = p[4:].strip()
-            if p.startswith("{"):
-                raw = p
-                break
+    # Strip markdown fences if present
+    if raw.startswith("```"):
+        lines = raw.split("\n")
+        raw = "\n".join(lines[1:-1] if lines[-1].strip() == "```" else lines[1:])
     raw = raw.strip()
 
-    # Find outermost JSON object
-    start = raw.find("{")
-    end = raw.rfind("}") + 1
-    if start >= 0 and end > start:
-        raw = raw[start:end]
-
-    # Fix common Claude JSON issues:
-    # 1. Replace curly quotes
-    raw = raw.replace('\u201c', "'").replace('\u201d', "'")
-    raw = raw.replace('\u2018', "'").replace('\u2019', "'")
+    # Extract JSON object
+    brace_start = raw.find("{")
+    brace_end = raw.rfind("}") + 1
+    if brace_start >= 0 and brace_end > brace_start:
+        raw = raw[brace_start:brace_end]
 
     try:
         return json.loads(raw)
     except json.JSONDecodeError as e:
-        log.error(f"JSON parse error: {e} at pos {e.pos}")
-        log.error(f"Context: {raw[max(0,e.pos-100):e.pos+100]}")
-        # Try removing trailing commas
+        log.error(f"JSON error at pos {e.pos}: {e.msg}")
+        log.error(f"Context: ...{raw[max(0,e.pos-80):e.pos+80]}...")
+        # Try to fix trailing commas
+        import re as _re
+        fixed = _re.sub(r",\s*}", "}", _re.sub(r",\s*]", "]", raw))
         try:
-            import re as _re2
-            fixed = _re2.sub(r',\s*([}\]])', r'\1', raw)
             return json.loads(fixed)
         except Exception:
             pass
-        # Return minimal fallback digest
+        # Last resort fallback
         return {
             "week": WEEK_TAG,
             "date_range": TODAY_STR,
-            "executive_summary_ua": "Digest generation encountered a parsing error this week.",
-            "executive_summary_en": "Digest generation encountered a parsing error this week.",
+            "executive_summary_ua": "Помилка генерації дайджесту.",
+            "executive_summary_en": "Digest generation error.",
             "sections": {"return": [], "recruit": [], "retain": [], "global_context": []},
-            "key_insight_en": "System error during digest generation - will retry next week.",
-            "key_insight_ua": "System error during digest generation - will retry next week.",
+            "key_insight_en": "System error during digest generation.",
+            "key_insight_ua": "Системна помилка.",
         }
 
 
