@@ -447,9 +447,9 @@ def analyse_with_claude(articles):
     log.info(f"Claude response length: {len(raw)} chars, starts: {raw[:100]}")
     # Write raw response to debug file for inspection
     try:
-        Path("digests").mkdir(exist_ok=True)
-        with open("digests/debug_last_response.txt", "w") as _f:
-            _f.write(raw)
+        Path("sent_history").mkdir(exist_ok=True)
+        with open("sent_history/debug_last_response.txt", "w") as _f:
+            _f.write(raw[:5000])
     except Exception:
         pass
 
