@@ -355,13 +355,12 @@ def clean_for_json(text):
     # Remove control characters and normalize quotes
     result = []
     for ch in str(text):
-        if ch == '"':
-            result.append('\'')  # replace double quotes with single
-        elif ord(ch) < 32 and ch not in ('\n', '\t'):
+        if ord(ch) < 32 and ch not in ('\n', '\t'):
             pass  # skip control chars
         else:
             result.append(ch)
-    return "".join(result)[:500]  # limit length
+    # Escape double quotes for JSON safety
+    return "".join(result).replace('\\', '\\\\').replace('"', '\\"')[:500]
 
 
 def select_top_articles(client, articles, top_n=25):
