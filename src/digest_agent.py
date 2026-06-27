@@ -16,6 +16,8 @@ from email.mime.base import MIMEBase
 from email import encoders
 from email.header import Header
 
+import pathlib as _pathlib
+_pathlib.Path("logs").mkdir(exist_ok=True)
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s  %(levelname)s  %(message)s",
@@ -471,6 +473,7 @@ Select 10-15 best articles total. Return ONLY the JSON object, nothing else."""
     )
 
     raw = response.content[0].text.strip()
+    print(f"DEBUG: Claude raw response {len(raw)} chars: {raw[:200]}", flush=True)
     log.info(f"Claude response: {len(raw)} chars, first 100: {raw[:100]}")
 
     # Write to debug file
@@ -790,8 +793,10 @@ def _main():
     log.info(f"=== 3R Digest Agent starting -- {WEEK_TAG} ===")
     log.info(f"TEST MODE: {TEST_MODE}")
     articles = collect_all_articles()
+    print(f"DEBUG: Collected {len(articles)} articles", flush=True)
     log.info(f"Collected: {len(articles)} articles")
     if not articles:
+        print("DEBUG: No articles — aborting", flush=True)
         log.error("No articles found. Aborting.")
         return
     history      = load_sent_history()
@@ -799,8 +804,10 @@ def _main():
     log.info(f"New: {len(new_articles)} / {len(articles)}")
     if len(new_articles) < 5:
         new_articles = articles
+    print(f"DEBUG: Calling Claude with {len(new_articles)} articles", flush=True)
     log.info(f"Analysing {len(new_articles)} articles with Claude...")
     digest  = analyse_with_claude(new_articles)
+    print(f"DEBUG: Claude returned digest with keys: {list(digest.keys())}", flush=True)
     log.info(f"Digest ready: {list(digest.get('sections',{}).keys())}")
     pdf_file = f"3R_Digest_{WEEK_TAG}.pdf"
     build_pdf(digest, pdf_file)
