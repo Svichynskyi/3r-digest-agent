@@ -929,8 +929,8 @@ def _main():
         for i, a in enumerate(new_articles):
             lines.append(f"{i+1}. score={a['_score']} | {a.get('title','')}\n")
             lines.append(f"   {a.get('url','')}\n\n")
-        Path("sent_history").mkdir(exist_ok=True)
-        with open(f"sent_history/scored_{WEEK_TAG}.md", "w") as _f:
+        Path(f"digests/{WEEK_TAG}").mkdir(parents=True, exist_ok=True)
+        with open(f"digests/{WEEK_TAG}/scored_{WEEK_TAG}.md", "w") as _f:
             _f.writelines(lines)
     except Exception as e:
         log.warning(f"Could not write scored list: {e}")
