@@ -916,24 +916,36 @@ def _main():
     for i, a in enumerate(top10):
         log.info(f"  [{i+1}] score={a['_score']} | {a.get('title','')[:60]}")
 
-    # Write full scored list to repo for transparency
+    # Upload full scored list to GitHub via API
     try:
-        import datetime as _dt
-        lines = [f"# 3R Digest — Scored Articles — {WEEK_TAG}\n",
-                 f"Total collected: {len(new_articles)} articles\n\n",
-                 f"## TOP 10 (sent to Claude)\n\n"]
+        lines = [f"# 3R Digest — All Scored Articles — {WEEK_TAG}\n\n",
+                 f"Total collected after dedup: **{len(new_articles)} articles**\n\n",
+                 f"## TOP 10 sent to Claude\n\n"]
         for i, a in enumerate(new_articles[:10]):
-            lines.append(f"{i+1}. **score={a['_score']}** | {a.get('title','')}\n")
-            lines.append(f"   {a.get('url','')}\n\n")
-        lines.append(f"\n## ALL SCORED ARTICLES ({len(new_articles)} total)\n\n")
+            lines.append(f"{i+1}. **score={a['_score']}** [{a.get('title','')}]({a.get('url','')})\n")
+            lines.append(f"   *{a.get('source','')}*\n\n")
+        lines.append(f"\n---\n\n## All {len(new_articles)} articles (scored)\n\n")
         for i, a in enumerate(new_articles):
-            lines.append(f"{i+1}. score={a['_score']} | {a.get('title','')}\n")
-            lines.append(f"   {a.get('url','')}\n\n")
-        Path(f"digests/{WEEK_TAG}").mkdir(parents=True, exist_ok=True)
-        with open(f"digests/{WEEK_TAG}/scored_{WEEK_TAG}.md", "w") as _f:
-            _f.writelines(lines)
+            lines.append(f"{i+1}. score={a['_score']} [{a.get('title','')}]({a.get('url','')}) *{a.get('source','')}*\n")
+        md_content = "".join(lines)
+
+        if GITHUB_TOKEN:
+            import base64 as _b64
+            path = f"digests/{WEEK_TAG}/all_scored_{WEEK_TAG}.md"
+            api_url = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{path}"
+            hdrs = {"Authorization": f"token {GITHUB_TOKEN}", "Content-Type": "application/json"}
+            check = requests.get(api_url, headers=hdrs)
+            body = {"message": f"Add scored list {WEEK_TAG}",
+                    "content": _b64.b64encode(md_content.encode()).decode()}
+            if check.status_code == 200:
+                body["sha"] = check.json()["sha"]
+            resp = requests.put(api_url, headers=hdrs, json=body)
+            if resp.ok:
+                log.info(f"Scored list uploaded: {path}")
+            else:
+                log.warning(f"Scored list upload failed: {resp.status_code}")
     except Exception as e:
-        log.warning(f"Could not write scored list: {e}")
+        log.warning(f"Could not upload scored list: {e}")
 
     digest  = analyse_with_claude(top10)
     print(f"DEBUG: Claude returned digest with keys: {list(digest.keys())}", flush=True)
