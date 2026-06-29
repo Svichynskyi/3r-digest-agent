@@ -754,7 +754,6 @@ def build_email_body(digest, link_pdf):
                 art += '<div style="margin-top:10px">' + lnk + '</div>'
             art += '</div>'
             articles_html += art
-    btn = '<a href="' + link_pdf + '" style="display:inline-block;padding:10px 22px;background:#5B4FCF;color:#fff;font-size:13px;font-weight:600;text-decoration:none;border-radius:4px">Download PDF</a>'
     return (
         '<html><head><meta charset="utf-8"></head>'
         '<body style="margin:0;padding:0;background:#f3f4f6;font-family:Helvetica Neue,Helvetica,Arial,sans-serif">'
@@ -772,7 +771,6 @@ def build_email_body(digest, link_pdf):
         '<div style="background:#EEF2FF;border-left:3px solid #5B4FCF;padding:16px 18px;font-size:14px;line-height:1.55;color:#1F2937">' + insight + '</div>'
         '</div>'
         '<div style="padding:6px 40px 0">' + articles_html + '</div>'
-        '<div style="padding:20px 40px 28px;border-top:1px solid #E5E7EB;margin-top:8px">' + btn + '</div>'
         '<div style="padding:16px 40px 28px;font-size:11px;line-height:1.7;color:#9CA3AF;border-top:1px solid #E5E7EB">'
         "3R Digest &middot; Weekly Intelligence on Ukraine's Human Capital"
         '</div>'
