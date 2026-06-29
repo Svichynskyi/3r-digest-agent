@@ -267,6 +267,55 @@ def dedup_articles(articles):
     return unique
 
 
+def diversity_filter(articles, max_per_domain=1, max_shared_keywords=3):
+    """Keep top scored article per domain + remove thematic near-duplicates."""
+    import re
+
+    def domain(url):
+        try:
+            return url.split("/")[2].replace("www.", "")
+        except Exception:
+            return url
+
+    def key_words(text):
+        """Extract significant words (>4 chars) from title."""
+        text = text.lower()
+        text = re.sub(r"[^\w\s]", " ", text)
+        return set(w for w in text.split() if len(w) > 4)
+
+    seen_domains = {}
+    seen_topics = []
+    result = []
+
+    for art in articles:  # already sorted by score desc
+        d = domain(art.get("url", ""))
+        title_words = key_words(art.get("title", ""))
+
+        # Rule 1: max 1 per domain
+        if seen_domains.get(d, 0) >= max_per_domain:
+            log.info(f"Diversity (domain limit): {art.get('title','')[:50]}")
+            continue
+
+        # Rule 2: check thematic overlap with already selected articles
+        too_similar = False
+        for prev_words in seen_topics:
+            overlap = len(title_words & prev_words)
+            if overlap >= max_shared_keywords:
+                log.info(f"Diversity (topic overlap={overlap}): {art.get('title','')[:50]}")
+                too_similar = True
+                break
+
+        if too_similar:
+            continue
+
+        seen_domains[d] = seen_domains.get(d, 0) + 1
+        seen_topics.append(title_words)
+        result.append(art)
+
+    log.info(f"Diversity filter: {len(articles)} → {len(result)} articles")
+    return result
+
+
 def mark_articles_sent(articles, history):
     for a in articles:
         history[url_fingerprint(a["url"])] = {
@@ -832,6 +881,8 @@ def _main():
 
     # Score all articles by 3R relevance, pick top 10
     new_articles = score_articles(new_articles)
+    # Apply diversity filter: max 1 per domain + no thematic duplicates
+    new_articles = diversity_filter(new_articles)
     top10 = new_articles[:10]
     log.info(f"Top 10 from {len(new_articles)} scored articles:")
     for i, a in enumerate(top10):
